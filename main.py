@@ -8,7 +8,7 @@ tokenizer = AutoTokenizer.from_pretrained("/juice5/scr5/nlp/llama-2-hf-latest/Ll
 
 # grab ids for "sure", "likely", and "impossible"
 TOK_SURE = tokenizer.encode("sure")[-1]
-TOK_LIKELY = tokenizer.encode("possible")[-1]
+TOK_LIKELY = tokenizer.encode("likely")[-1]
 TOK_IMPOSSIBLE = tokenizer.encode("impossible")[-1]
 
 TOK_ONE = tokenizer.encode("C")[-1]
@@ -61,6 +61,16 @@ Judge: """
     inputs = tokenizer(prompt.strip(), return_tensors="pt")
     output = model(inputs.input_ids.cuda())
 
+    nll_1 = f"{premise} {hypothesis1}"
+    nll_2 = f"{premise} {hypothesis2}"
+    with torch.no_grad():
+        inputs_1 = tokenizer(nll_1.strip(), return_tensors="pt").input_ids.cuda()
+        inputs_2 = tokenizer(nll_2.strip(), return_tensors="pt").input_ids.cuda()
+        output_1 = model(inputs_1, labels=inputs_1)
+        output_2 = model(inputs_2, labels=inputs_2)
+        nll_1 = output_1.loss
+        nll_2 = output_2.loss
+
     # print(tokenizer.batch_decode(output, 
         # skip_special_tokens=True, 
         # clean_up_tokenization_spaces=True)[0])
@@ -73,10 +83,15 @@ Judge: """
     probs = F.softmax(torch.tensor([
         distr[TOK_SURE], distr[TOK_IMPOSSIBLE]
         ]), dim=0)
+    probs_nll = F.softmax(torch.tensor([
+        nll_1, nll_2
+        ]), dim=0)
 
     print("(prompting) > ", ["one", "two"][torch.argmax(probs).item()])
+    print("(nll) > ", ["one", "two"][torch.argmax(probs_nll).item()])
     # print("(desired) > ", tokenizer.decode(torch.argmax(distr).item()))
     print(probs)
+    print(probs_nll)
 
     # res = tokenizer.batch_decode(model.generate(inputs.input_ids.cuda(), max_new_tokens=50, do_sample=False, temperature=0))[0] 
             # skip_special_tokens=true, clean_up_tokenization_spaces=false)[0][len(prompt)-1:]
