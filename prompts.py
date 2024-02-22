@@ -1,5 +1,5 @@
 def propose(task):
-    propose_prompt = f"""
+    return f"""
 Input: 2 8 8 14
 Possible next steps:
 2 + 8 = 10 (left: 8 10 14)
