@@ -34,61 +34,70 @@ while True:
     # hypothesis = "I'm going to climb to the top of sparkle montain."
     
     prompt = f"""
-Use numbers and basic arithmetic operations (+ - * /) to obtain 24. Given an input and an answer, give a judgement (sure/impossible) if the answer is correct, i.e. it uses each input exactly once and no other numbers, and reach 24.
-Input: 4 4 6 8
-Answer: (4 + 8) * (6 - 4) = 24
+Evaluate if given numbers can reach 24 (sure/likely/impossible)
+10 14
+10 + 14 = 24
 Judge: sure
-Input: 2 9 10 12
-Answer: 2 * 12 * (10 - 9) = 24
+11 12
+11 + 12 = 23
+12 - 11 = 1
+11 * 12 = 132
+11 / 12 = 0.91
+Judge: impossible
+4 4 10
+4 + 4 + 10 = 8 + 10 = 18
+4 * 10 - 4 = 40 - 4 = 36
+(10 - 4) * 4 = 6 * 4 = 24
 Judge: sure
-Input: 4 9 10 13
-Answer: (13 - 9) * (10 - 4) = 24
-Judge: sure
-Input: 4 4 6 8
-Answer: (4 + 8) * (6 - 4) + 1 = 25
+4 9 11
+9 + 11 + 4 = 20 + 4 = 24
+sure
+5 7 8
+5 + 7 + 8 = 12 + 8 = 20
+(8 - 5) * 7 = 3 * 7 = 21
+Judge: likely
+5 6 6
+5 + 6 + 6 = 17
+(6 - 5) * 6 = 1 * 6 = 6
+Judge: likely
+10 10 11
+10 + 10 + 11 = 31
+(11 - 10) * 10 = 10
 Judge: impossible
-Input: 2 9 10 12
-Answer: 2 * (12 - 10) = 24
+1 3 3
+1 * 3 * 3 = 9
+(1 + 3) * 3 = 12
 Judge: impossible
-Input: 4 9 10 13
-Answer: (13 - 4) * (10 - 9) = 24
-Judge: impossible
-Input: {task}
-Answer: {steps}
+{task}
+{steps}
 Judge: """
 
     # sample output distribution
     inputs = tokenizer(prompt.strip(), return_tensors="pt")
     output = model(inputs.input_ids.cuda())
 
-    nll_1 = f"{premise} {hypothesis1}"
-    nll_2 = f"{premise} {hypothesis2}"
-    with torch.no_grad():
-        inputs_1 = tokenizer(nll_1.strip(), return_tensors="pt").input_ids.cuda()
-        inputs_2 = tokenizer(nll_2.strip(), return_tensors="pt").input_ids.cuda()
-        output_1 = model(inputs_1, labels=inputs_1)
-        output_2 = model(inputs_2, labels=inputs_2)
-        nll_1 = output_1.loss
-        nll_2 = output_2.loss
+    # sure likely and impossible prompts
+    nli_sure = tokenizer(prompt.strip()+"sure", return_tensors="pt").input_ids.cuda()
+    nli_likely = tokenizer(prompt.strip()+"likely", return_tensors="pt").input_ids.cuda()
+    nli_impossible = tokenizer(prompt.strip()+"impossible", return_tensors="pt").input_ids.cuda()
 
-    # print(tokenizer.batch_decode(output, 
-        # skip_special_tokens=True, 
-        # clean_up_tokenization_spaces=True)[0])
-    # breakpoint()
+    output_sure = model(nli_sure, labels=nli_sure).loss
+    output_likely = model(nli_likely, labels=nli_likely).loss
+    output_impossible = model(nli_impossible, labels=nli_impossible).loss
 
     # grab the last one
     distr = output["logits"][0][-1]
 
     # grab the distributions for each class
     probs = F.softmax(torch.tensor([
-        distr[TOK_SURE], distr[TOK_IMPOSSIBLE]
+        distr[TOK_SURE], distr[TOK_LIKELY], distr[TOK_IMPOSSIBLE]
         ]), dim=0)
     probs_nll = F.softmax(torch.tensor([
-        nll_1, nll_2
+        output_sure, output_likely, output_impossible
         ]), dim=0)
 
-    print("(prompting) > ", ["one", "two"][torch.argmax(probs).item()])
-    print("(nll) > ", ["one", "two"][torch.argmax(probs_nll).item()])
+    print("(prompting) > ", ["sure", "likely", "impossible"][torch.argmax(probs).item()])
+    print("(nll) > ", ["sure", "likely", "impossible"][torch.argmax(probs_nll).item()])
     # print("(desired) > ", tokenizer.decode(torch.argmax(distr).item()))
     print(probs)
     print(probs_nll)
