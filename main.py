@@ -3,6 +3,8 @@ from transformers import AutoTokenizer, LlamaForCausalLM
 import torch
 import torch.nn.functional as F
 
+from prompts import value
+
 model = LlamaForCausalLM.from_pretrained("/juice5/scr5/nlp/llama-2-hf-latest/Llama-2-7b-chat-hf", use_cache=True, low_cpu_mem_usage=True, device_map = 'cuda')
 tokenizer = AutoTokenizer.from_pretrained("/juice5/scr5/nlp/llama-2-hf-latest/Llama-2-7b-chat-hf")
 
@@ -26,51 +28,14 @@ while True:
         step = input("(step) > ").strip()
         if step != "":
             steps.append(step)
-    steps = "\n".join(steps)
 
     # premise = "I'm very athletic."
     # statement = "I'm very athletic."
     # judgement = "impossible"
     # hypothesis = "I'm going to climb to the top of sparkle montain."
     
-    prompt = f"""
-Evaluate if given numbers can reach 24 (sure/likely/impossible)
-10 14
-10 + 14 = 24
-Judge: sure
-11 12
-11 + 12 = 23
-12 - 11 = 1
-11 * 12 = 132
-11 / 12 = 0.91
-Judge: impossible
-4 4 10
-4 + 4 + 10 = 8 + 10 = 18
-4 * 10 - 4 = 40 - 4 = 36
-(10 - 4) * 4 = 6 * 4 = 24
-Judge: sure
-4 9 11
-9 + 11 + 4 = 20 + 4 = 24
-sure
-5 7 8
-5 + 7 + 8 = 12 + 8 = 20
-(8 - 5) * 7 = 3 * 7 = 21
-Judge: likely
-5 6 6
-5 + 6 + 6 = 17
-(6 - 5) * 6 = 1 * 6 = 6
-Judge: likely
-10 10 11
-10 + 10 + 11 = 31
-(11 - 10) * 10 = 10
-Judge: impossible
-1 3 3
-1 * 3 * 3 = 9
-(1 + 3) * 3 = 12
-Judge: impossible
-{task}
-{steps}
-Judge: """
+    # fill in value prompt template
+    prompt = value(task, steps)
 
     # sample output distribution
     inputs = tokenizer(prompt.strip(), return_tensors="pt")
