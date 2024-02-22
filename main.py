@@ -41,15 +41,6 @@ while True:
     inputs = tokenizer(prompt.strip(), return_tensors="pt")
     output = model(inputs.input_ids.cuda())
 
-    # sure likely and impossible prompts
-    nli_sure = tokenizer(prompt.strip()+"sure", return_tensors="pt").input_ids.cuda()
-    nli_likely = tokenizer(prompt.strip()+"likely", return_tensors="pt").input_ids.cuda()
-    nli_impossible = tokenizer(prompt.strip()+"impossible", return_tensors="pt").input_ids.cuda()
-
-    output_sure = model(nli_sure, labels=nli_sure).loss
-    output_likely = model(nli_likely, labels=nli_likely).loss
-    output_impossible = model(nli_impossible, labels=nli_impossible).loss
-
     # grab the last one
     distr = output["logits"][0][-1]
 
@@ -57,15 +48,10 @@ while True:
     probs = F.softmax(torch.tensor([
         distr[TOK_SURE], distr[TOK_LIKELY], distr[TOK_IMPOSSIBLE]
         ]), dim=0)
-    probs_nll = F.softmax(torch.tensor([
-        output_sure, output_likely, output_impossible
-        ]), dim=0)
 
     print("(prompting) > ", ["sure", "likely", "impossible"][torch.argmax(probs).item()])
-    print("(nll) > ", ["sure", "likely", "impossible"][torch.argmax(probs_nll).item()])
     # print("(desired) > ", tokenizer.decode(torch.argmax(distr).item()))
     print(probs)
-    print(probs_nll)
 
     # res = tokenizer.batch_decode(model.generate(inputs.input_ids.cuda(), max_new_tokens=50, do_sample=False, temperature=0))[0] 
             # skip_special_tokens=true, clean_up_tokenization_spaces=false)[0][len(prompt)-1:]
