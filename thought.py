@@ -42,9 +42,9 @@ while True:
     res = tokenizer.batch_decode(model.generate(inputs.input_ids.cuda(),
                                                 max_new_tokens=100,
                                                 do_sample=False,
-                                                skip_special_tokens=True,
-                                                clean_up_tokenization_spaces=True,
-                                                temperature=0))[0] 
+                                                temperature=0),
+                                 skip_special_tokens=True,
+                                 clean_up_tokenization_spaces=True)[0] 
             # skip_special_tokens=true, clean_up_tokenization_spaces=false)[0][len(prompt)-1:]
     print(res)
     breakpoint()
