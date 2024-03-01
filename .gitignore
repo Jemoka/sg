@@ -1,1 +1,4 @@
 *.swp
+/.env
+/__pycache__/
+/#oai.py#
