@@ -14,7 +14,7 @@ def msgify(text):
     return [{"role": "user", "content": text}]
 
 def prompt_for_completion(text):
-    print("COMPLETION", " ".join(text.split("\n")[-5:]).strip())
+    print("COMPLETION")
     # print("completion: running", text)
     params = {
         "model": "gpt-4-turbo",
@@ -29,7 +29,7 @@ def prompt_for_completion(text):
     return completion
 
 def prompt_for_next(text):
-    print("NTP", " ".join(text.split("\n")[-5:]).strip())
+    print("NTP")
     # print("ntp: running", text)
     params = {
         "model": "gpt-4-turbo",

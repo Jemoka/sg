@@ -9,7 +9,7 @@ from julia.QMDP import QMDPSolver
 
 from julia.POMDPTools import ImplicitDistribution, Deterministic, Uniform, SparseCat, HistoryRecorder
 from julia.Random import MersenneTwister
-from julia.BasicPOMCP import POMCPSolver
+from julia.BasicPOMCP import POMCPSolver, action_info
 from julia.POMDPSimulators import stepthrough
 from julia.SARSOP import SARSOPSolver
 from julia.POMCPOW import POMCPOWSolver
@@ -34,19 +34,16 @@ from model import *
 
 # J.rand(ImplicitDistribution(new_problem))
 
-N_THOUGHTS = 3
+N_THOUGHTS = 1
 
 
 def transition(s, a):
+    print("NEXT:", len(s.trajectory))
     # we are done, new problem
-    if len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1:
-        return ImplicitDistribution(new_problem)
+        # return ImplicitDistribution(new_problem)
 
     # otherwise:
-    if a == "submit":
-        print("SUBMIT!")
-        return ImplicitDistribution(new_problem)
-    elif a == "rollback":
+    if a == "rollback":
         print("ROLLBACK!")
         ns = State(
             problem=s.problem,
@@ -61,8 +58,13 @@ def transition(s, a):
 
         for i in range(N_THOUGHTS):
             sp = deepcopy(s)
-            sp.trajectory.append(parse_thought(think(problem)))
-            thoughts.append(sp)
+            thought = parse_thought(think(problem))
+            if thought: 
+                sp.trajectory.append(thought)
+                thoughts.append(sp)
+
+        if len(thoughts) == 0:
+            return s
 
         return Uniform(thoughts)
 
@@ -84,14 +86,19 @@ def reward_(s, a, sp):
     parsed = parse_traj(sp.trajectory)
     return reward(sp.problem, parsed)
 
-# def leaf_estimate():
+# def estimate_value(o, p, op, s, sp, opp, spp, oppp, i):
 #     breakpoint()
 
+def stop(s):
+    stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
+
+    return stopping
+
 m = QuickPOMDP(
-    actions = ["continue", "rollback", "submit"],
+    actions = ["continue", "rollback"],
     observations = ["sure", "likely", "impossible"],
-    discount = 0.95,
-    isterminal = lambda s: len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1,
+    discount = 0.5,
+    isterminal = stop,
     transition = transition,
     observation = observation,
     reward = reward_,
@@ -112,16 +119,21 @@ m = QuickPOMDP(
 
 # m = BabyPOMDP()
 # ImplicitDistribution(random_state)
-# solver = POMCPOWSolver()
-solver = POMCPSolver()
-policy = solve(solver, m)
+# solver = SARSOPSolver()
+solver = POMCPSolver(max_depth = 3, tree_queries = 6) #, estimate_value=estimate_value)
+planner = solve(solver, m)
 
-history = HistoryRecorder(max_steps=10)
-hist = simulate(history, m, policy)
-breakpoint()
+# a, info = action_info(planner, ImplicitDistribution(new_problem))
+# breakpoint()
 
-# for (s,a,r,sp,o) in stepthrough(m, policy, "s,a,r,sp,o"):
-#     breakpoint()
+# history = HistoryRecorder(max_steps=10)
+# hist = simulate(history, m, policy)
+# breakpoint()
+# b = 
+
+for (s,a,o) in stepthrough(m, planner, "s,a,o"):
+    print(s,a,o)
+    breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")
 # for i in r:

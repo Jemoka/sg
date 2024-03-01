@@ -46,9 +46,12 @@ def value(task, steps):
             dist_likely = math.exp(i.logprob)
 
     # grab the distributions for each class and rescale
-    probs = F.softmax(torch.tensor([
-        dist_sure, dist_likely, dist_impossible
-        ]), dim=0)
+    try:
+        probs = F.softmax(torch.tensor([
+            dist_sure, dist_likely, dist_impossible
+            ]), dim=0)
+    except RuntimeError:
+        breakpoint()
 
     return probs
 

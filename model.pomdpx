@@ -7,7 +7,7 @@
 	<Description> This is a pomdpx file for a partially observable MDP</Description>
 
 
-	<Discount>0.95</Discount>
+	<Discount>0.5</Discount>
 
 
 	<Variable>

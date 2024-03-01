@@ -1,6 +1,6 @@
 def propose(task):
     return f"""
-Follow the output format exactly. Do not say extra words. Do not use decimals.
+Do not use decimals AT ALL. Follow the output format exactly. Do not say extra words. 
 
 Input: 2 8 8 14
 Possible next steps:
@@ -21,46 +21,46 @@ Possible next steps:
 def value(task, steps):
     steps = "\n".join(steps)
     return f"""
-Follow the output format exactly. Do not say extra words. Do not use decimals.
+Follow the output format exactly. Do not say extra words. Do not use decimals AT ALL.
 
 Evaluate if given numbers can reach 24 (sure/likely/impossible)
-10 14
+problem: 10 14
 10 + 14 = 24
 judge: sure
-11 12
+problem: 11 12
 11 + 12 = 23
 12 - 11 = 1
 11 * 12 = 132
 11 / 12 = 0.91
 judge: impossible
-4 4 10
+problem: 4 4 10
 4 + 4 + 10 = 8 + 10 = 18
 4 * 10 - 4 = 40 - 4 = 36
 (10 - 4) * 4 = 6 * 4 = 24
 judge: sure
-4 9 11
+problem: 4 9 11
 9 + 11 + 4 = 20 + 4 = 24
 sure
-5 7 8
+problem: 5 7 8
 5 + 7 + 8 = 12 + 8 = 20
 (8 - 5) * 7 = 3 * 7 = 21
 judge: likely
-5 6 6
+problem: 5 6 6
 5 + 6 + 6 = 17
 (6 - 5) * 6 = 1 * 6 = 6
 judge: likely
-10 10 11
+problem: 10 10 11
 10 + 10 + 11 = 31
 (11 - 10) * 10 = 10
 judge: impossible
-1 3 3
+problem: 1 3 3
 1 * 3 * 3 = 9
 (1 + 3) * 3 = 12
 judge: impossible
-1 5 5
+problem: 1 5 5
 1 * 5 * 5 = 24
 judge: impossible
-{task}
+problem: {task}
 {steps}
 judge: """.strip()+" "
 

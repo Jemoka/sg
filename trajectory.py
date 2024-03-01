@@ -5,6 +5,8 @@ from enum import Enum
 import re
 import random
 
+import csv
+import os 
 
 
 THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: \d+)+)\)")
@@ -15,14 +17,24 @@ class State:
     problem: str
     trajectory: List[Tuple[str, int, List[int]]]
 
+
+with open(os.path.join(os.path.abspath(os.path.join(__file__, os.pardir)),
+                       "./24.csv")) as df:
+    # leave out last 50
+    DATA = [i for i in csv.reader(df)][1:][:-50]
+
+def get_problem():
+    sample = DATA[random.randint(0, len(DATA)-1)]
+    return sample[1]
+
 def new_problem(_):
     return State(
-        problem="8 5 2 2",
+        problem=get_problem(),
         trajectory=[]
     )
 
 def random_state(_):
-    problem = "8 5 2 2"
+    problem = get_problem()
     ro = rollout(problem)
     return State(
         problem=problem,
@@ -34,6 +46,7 @@ def parse_thought(thought):
     try:
         expr, remain = THOUGHT.findall(thought)[0]
     except IndexError:
+        return None
         breakpoint()
     # split out remaining values
     remain = [int(i) for i in remain.strip().split(" ")]
