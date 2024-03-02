@@ -14,9 +14,11 @@ from julia.POMDPSimulators import stepthrough
 from julia.SARSOP import SARSOPSolver
 from julia.POMCPOW import POMCPOWSolver
 from julia.POMDPModels import BabyPOMDP
+from julia.NamedTupleTools import namedtuple
 
 import julia.Main as J
 
+# from collections import namedtuple
 from copy import deepcopy
 
 import sys
@@ -34,57 +36,27 @@ from model import *
 
 # J.rand(ImplicitDistribution(new_problem))
 
-N_THOUGHTS = 1
+# N_THOUGHTS = 1
 
 
-def transition(s, a):
-    print("NEXT:", len(s.trajectory))
-    # we are done, new problem
-        # return ImplicitDistribution(new_problem)
+# # def transition(s, a):
+# def observation(s, a, sp):
+#     # if you did nothing. uhh
+#     if len(sp.trajectory) == 0:
+#         return Uniform(["sure", "likely", "impossible"])
 
-    # otherwise:
-    if a == "rollback":
-        print("ROLLBACK!")
-        ns = State(
-            problem=s.problem,
-            trajectory=s.trajectory[:-1]
-        )
-        return Deterministic(ns)
-    elif a == "continue":
-        print("CONTINUE!")
-        thoughts = []
-        problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
-                   if len(s.trajectory) > 0 else s.problem)
+#     parsed = parse_traj(sp.trajectory)
+#     res = value(sp.problem, [parsed])
 
-        for i in range(N_THOUGHTS):
-            sp = deepcopy(s)
-            thought = parse_thought(think(problem))
-            if thought: 
-                sp.trajectory.append(thought)
-                thoughts.append(sp)
+#     return SparseCat(["sure", "likely", "impossible"], res.tolist())
 
-        if len(thoughts) == 0:
-            return s
-
-        return Uniform(thoughts)
-
-def observation(s, a, sp):
-    # if you did nothing. uhh
-    if len(sp.trajectory) == 0:
-        return Uniform(["sure", "likely", "impossible"])
-
-    parsed = parse_traj(sp.trajectory)
-    res = value(sp.problem, [parsed])
-
-    return SparseCat(["sure", "likely", "impossible"], res.tolist())
-
-# because reward() is already our lm reward
-def reward_(s, a, sp):
-    # if you did nothing. uhh
-    if len(sp.trajectory) == 0:
-        return -5
-    parsed = parse_traj(sp.trajectory)
-    return reward(sp.problem, parsed)
+# # because reward() is already our lm reward
+# def reward_(s, a, sp):
+#     # if you did nothing. uhh
+#     if len(sp.trajectory) == 0:
+#         return -5
+#     parsed = 
+#     return reward(sp.problem, parse_traj(sp.trajectory))
 
 # def estimate_value(o, p, op, s, sp, opp, spp, oppp, i):
 #     breakpoint()
@@ -94,15 +66,80 @@ def stop(s):
 
     return stopping
 
+def generator(s,a,rng):
+    print("NEXT:", len(s.trajectory))
+
+    # calculate next state
+    next_state = None
+    rew = None
+    obs = None
+
+    # if we are rolling back, do so
+    if a == "rollback":
+        print("ROLLBACK!")
+        ns = State(
+            problem=s.problem,
+            trajectory=s.trajectory[:-1]
+        )
+        next_state = ns
+    # otherwise, sample a single thought
+    elif a == "continue":
+        print("CONTINUE!")
+        problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
+                   if len(s.trajectory) > 0 else s.problem)
+
+        thought = None
+
+        while not thought:
+            sp = deepcopy(s)
+            thought = parse_thought(think(problem))
+            if thought: 
+                sp.trajectory.append(thought)
+                next_state = sp
+
+    # calculate next trajectory
+    next_traj = parse_traj(next_state.trajectory)
+
+    # if next state has nothing, we are sad
+    if len(next_state.trajectory) == 0:
+        rew = -5
+    else:
+    # calculate reward
+        rew = reward(next_state.problem, next_traj)
+
+    # make an observation on our current state
+    if len(next_state.trajectory) == 0:
+        obs = J.rand(Uniform(["sure", "likely", "impossible"]))
+    else:
+        res = value(next_state.problem, [next_traj])
+        obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
+
+    # g = generation()
+    return namedtuple(["sp", "o", "r"], (next_state, obs, rew))
+
 m = QuickPOMDP(
     actions = ["continue", "rollback"],
     observations = ["sure", "likely", "impossible"],
     discount = 0.5,
     isterminal = stop,
-    transition = transition,
-    observation = observation,
-    reward = reward_,
+    # transition = transition,
+    # observation = observation,
+    # reward = reward_,
     initialstate = ImplicitDistribution(new_problem),
+    gen = generator
+    # gen = function (s, a, rng)
+    #     x, v = s
+    #     vp = v + a*0.001 + cos(3*x)*-0.0025 + 0.0002*randn(rng)
+    #     vp = clamp(vp, -0.07, 0.07)
+    #     xp = x + vp
+    #     if xp > 0.5
+    #         r = 100.0
+    #     else
+    #         r = -1.0
+    #     end
+    #     o = xp + 0.15*randn(rng)
+    #     return (sp=(xp, vp), o=o, r=r)
+    # end,
 )
 
 # estimate_value(::PyObject,
