@@ -14,7 +14,7 @@ def msgify(text):
     return [{"role": "user", "content": text}]
 
 def prompt_for_completion(text):
-    print("COMPLETION")
+    # print("COMPLETION")
     
     # tmp = client.completions.create(
     #     model="gpt-4-large",
@@ -36,7 +36,7 @@ def prompt_for_completion(text):
     return completion
 
 def prompt_for_next(text):
-    print("NTP")
+    # print("NTP")
     # print("ntp: running", text)
     params = {
         "model": "gpt-35-turbo",

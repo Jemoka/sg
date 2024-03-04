@@ -65,6 +65,9 @@ def rollout_state(state):
         return 0
     ro = rollout(state.problem, state.trajectory)
 
+    if ro == None:
+        return 0
+
     return reward(state.problem, parse_traj(ro)).item()
 
 # rollout
@@ -74,6 +77,8 @@ def rollout(problem, result=[]):
         # generate and parse thought
         thoughts = think(problem.strip())
         thought = parse_thought(thoughts)
+        if thought == None:
+            return None
         result.append(thought)
 
         # otherwise, keep going
@@ -127,7 +132,7 @@ def stringify_graph(graph):
 # finally, we stringify the whole thing by generating intemediate graphs
 def parse_traj(traj):
     if len(traj) == 0:
-        print("PARSE EMPTY TRAJ!!")
+        # print("PARSE EMPTY TRAJ!!")
         return ""
     oup = traj[-1][-1][0]
 

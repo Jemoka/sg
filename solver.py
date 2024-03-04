@@ -69,7 +69,7 @@ import torch
 def stop(s):
 
     if s == None:
-        print("GOODYBE!")
+        # print("GOODYBE!")
         return True
 
     else:
@@ -91,7 +91,7 @@ def generator_weight(s, a, sp, o):
         return res.tolist()[["sure", "likely", "impossible"].index(o)]
 
 def generator(s,a,rng):
-    print("NEXT:", len(s.trajectory))
+    # print("NEXT:", len(s.trajectory))
 
     # calculate next state
     next_state = None
@@ -101,7 +101,7 @@ def generator(s,a,rng):
     # if we are rolling back, do so
     if a == "rollback":
         # if we try to roll back 
-        print("ROLLBACK!")
+        # print("ROLLBACK!")
         ns = State(
             problem=s.problem,
             trajectory=s.trajectory[:-1]
@@ -109,7 +109,7 @@ def generator(s,a,rng):
         next_state = ns
     # otherwise, sample a single thought
     elif a == "continue":
-        print("CONTINUE!")
+        # print("CONTINUE!")
         problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
                    if len(s.trajectory) > 0 else s.problem)
 
@@ -123,16 +123,28 @@ def generator(s,a,rng):
                 next_state = sp
     # if we are submitting, evaluate and return
     elif a == "submit":
-        print("SUBMIT!")
+        # print("SUBMIT!")
         sp = None
+        # if we are at a good stopping point
         is_stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
         if not is_stopping:
             traj = parse_traj(s.trajectory)
+            res = value(s.problem, [traj])
+
+            # mode said sure
+            if torch.argmax(res).item() == 0:
+                rew = 10
+            # mode said impossible
+            elif torch.argmax(res).item() == 2:
+                rew = -10
         else:
             traj = ""
+            res = 0
+            rew = 0
+        # otherwise, punish model
         return namedtuple(["sp", "o", "r"], (None,
                                              J.rand(Uniform(["sure", "likely", "impossible"])),
-                                             -100 if not is_stopping else reward(s.problem, traj)*10))
+                                             -100 if not is_stopping else rew))
 
     # calculate next trajectory
     if len(next_state.trajectory) != 0:
@@ -232,9 +244,14 @@ planner = solve(solver, m)
 # b = 
 
 while True:
-    for (s,a,o) in stepthrough(m, planner, filter, "s,a,o"):
-        print(s,a,o)
-        breakpoint()
+    for (s,sp, a,o) in stepthrough(m, planner, filter, "s,sp,a,o"):
+        # s1 = parse_traj(s.trajectory) if s != None else ""
+        s2 = parse_traj(sp.trajectory) if sp != None else ""
+        print(f"DID: {a}")
+        if s2 != "":
+            print(f"GOT: {s2} <{o}>")
+        # print(s,a,o)
+    breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")
 # for i in r:
