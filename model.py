@@ -14,11 +14,16 @@ from oai import prompt_for_completion, prompt_for_next
 
 # generate thoughts
 def think(task):
-    # fill in value prompt template
-    prompt = P(task)
 
-    output = [i.strip() for i in 
-              prompt_for_completion(prompt).choices[0].message.content.split("\n")]
+    output = []
+
+    while len(output) == 0:
+        # fill in value prompt template
+        prompt = P(task)
+
+        output = [i.strip() for i in 
+                prompt_for_completion(prompt).choices[0].text.split("\n")
+                if i.strip() != ""]
 
     return output[0]
 
@@ -29,21 +34,21 @@ def value(task, steps):
 
     # sample output distribution
     # inputs = tokenizer(prompt.strip(), return_tensors="pt")
-    output = prompt_for_next(prompt).choices[0].logprobs.content[0].top_logprobs
+    output = prompt_for_next(prompt).choices[0].logprobs.top_logprobs[0]
 
     # calculate probablitiies
-    dist_sure = 0
-    dist_likely = 0
-    dist_impossible = 0
+    dist_sure = 0.0
+    dist_likely = 0.0
+    dist_impossible = 0.0
 
-    for i in output:
-        if i.token == "sure":
-            dist_sure = math.exp(i.logprob)
+    for i,j in output.items():
+        if i == "sure":
+            dist_sure = math.exp(j)
         # im is apparently a token
-        elif i.token == "im":
-            dist_impossible = math.exp(i.logprob)
-        elif i.token == "likely":
-            dist_likely = math.exp(i.logprob)
+        elif i == "im":
+            dist_impossible = math.exp(j)
+        elif i == "likely":
+            dist_likely = math.exp(j)
 
     # grab the distributions for each class and rescale
     try:
@@ -62,18 +67,19 @@ def reward(task, solution):
 
     # sample output distribution
     # inputs = tokenizer(prompt.strip(), return_tensors="pt")
-    output = prompt_for_next(prompt).choices[0].logprobs.content[0].top_logprobs
+    output = prompt_for_next(prompt).choices[0].logprobs.top_logprobs[0]
 
     # calculate probablitiies
     dist_sure = 0
     dist_impossible = 0
 
-    for i in output:
-        if i.token == "sure":
-            dist_sure = math.exp(i.logprob)
+
+    for i,j in output.items():
+        if i == "sure":
+            dist_sure = math.exp(j)
         # im is apparently a token
-        elif i.token == "im":
-            dist_impossible = math.exp(i.logprob)
+        elif i == "im":
+            dist_impossible = math.exp(j)
 
     # grab the distributions for each class and rescale
     probs = F.softmax(torch.tensor([

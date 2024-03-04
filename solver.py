@@ -15,17 +15,22 @@ from julia.SARSOP import SARSOPSolver
 from julia.POMCPOW import POMCPOWSolver
 from julia.POMDPModels import BabyPOMDP
 from julia.NamedTupleTools import namedtuple
+from julia.ParticleFilters import BootstrapFilter
 
 import julia.Main as J
+
+jl = Julia()
 
 # from collections import namedtuple
 from copy import deepcopy
 
 import sys
-sys.path.append("/Users/houjun/Documents/Projects/sg/")
+PATH = "/Users/houjun/Documents/Projects/sg/"
+sys.path.append(PATH)
 
 from trajectory import *
 from model import *
+import torch
 
 # rng = MersenneTwister(1)
 # rng()
@@ -62,20 +67,40 @@ from model import *
 #     breakpoint()
 
 def stop(s):
-    stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
 
-    return stopping
+    if s == None:
+        print("GOODYBE!")
+        return True
+
+    else:
+        return False
+    # stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
+
+    # return stopping
+
+def generator_weight(s, a, sp, o):
+    if s == None or sp == None:
+        return 0
+    # get a trajectory
+    next_traj = parse_traj(sp.trajectory)
+    # make an observation on our current state
+    if len(sp.trajectory) == 0:
+        return 1/3
+    else:
+        res = value(sp.problem, [next_traj])
+        return res.tolist()[["sure", "likely", "impossible"].index(o)]
 
 def generator(s,a,rng):
     print("NEXT:", len(s.trajectory))
 
     # calculate next state
     next_state = None
-    rew = None
+    rew = 0
     obs = None
 
     # if we are rolling back, do so
     if a == "rollback":
+        # if we try to roll back 
         print("ROLLBACK!")
         ns = State(
             problem=s.problem,
@@ -96,16 +121,31 @@ def generator(s,a,rng):
             if thought: 
                 sp.trajectory.append(thought)
                 next_state = sp
+    # if we are submitting, evaluate and return
+    elif a == "submit":
+        print("SUBMIT!")
+        sp = None
+        is_stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
+        if not is_stopping:
+            traj = parse_traj(s.trajectory)
+        else:
+            traj = ""
+        return namedtuple(["sp", "o", "r"], (None,
+                                             J.rand(Uniform(["sure", "likely", "impossible"])),
+                                             -100 if not is_stopping else reward(s.problem, traj)*10))
 
     # calculate next trajectory
-    next_traj = parse_traj(next_state.trajectory)
-
-    # if next state has nothing, we are sad
-    if len(next_state.trajectory) == 0:
-        rew = -5
+    if len(next_state.trajectory) != 0:
+        next_traj = parse_traj(next_state.trajectory)
     else:
-    # calculate reward
-        rew = reward(next_state.problem, next_traj)
+        next_traj = []
+
+    # # if next state has nothing, we are sad
+    if len(next_state.trajectory) == 0:
+        rew -= 1
+    # else:
+    # # calculate reward
+    #     rew = reward(next_state.problem, next_traj)
 
     # make an observation on our current state
     if len(next_state.trajectory) == 0:
@@ -114,11 +154,30 @@ def generator(s,a,rng):
         res = value(next_state.problem, [next_traj])
         obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
 
+        # mode said sure
+        if torch.argmax(res).item() == 0:
+            rew += 1
+        elif torch.argmax(res).item() == 2:
+            rew -= 1
+
     # g = generation()
     return namedtuple(["sp", "o", "r"], (next_state, obs, rew))
 
+roll_jl_bridge = jl.eval(f"""
+@pyimport importlib.machinery as machinery
+loader = machinery.SourceFileLoader("trajectory","{PATH}/trajectory.py")
+ro = loader[:load_module]("trajectory").rollout_state
+
+function rollout(pomdp, s, h, steps)
+    value = ro(s)
+    return value
+end
+
+rollout""")
+
+
 m = QuickPOMDP(
-    actions = ["continue", "rollback"],
+    actions = ["continue", "rollback", "submit"],
     observations = ["sure", "likely", "impossible"],
     discount = 0.5,
     isterminal = stop,
@@ -126,7 +185,9 @@ m = QuickPOMDP(
     # observation = observation,
     # reward = reward_,
     initialstate = ImplicitDistribution(new_problem),
-    gen = generator
+    gen = generator,
+    obs_weight = generator_weight,
+    default_action = "submit"
     # gen = function (s, a, rng)
     #     x, v = s
     #     vp = v + a*0.001 + cos(3*x)*-0.0025 + 0.0002*randn(rng)
@@ -157,20 +218,23 @@ m = QuickPOMDP(
 # m = BabyPOMDP()
 # ImplicitDistribution(random_state)
 # solver = SARSOPSolver()
-solver = POMCPSolver(max_depth = 3, tree_queries = 6) #, estimate_value=estimate_value)
+filter = BootstrapFilter(m, 10)
+solver = POMCPSolver(max_depth = 3, tree_queries = 3, estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
+# solver = POMCPOWSolver()
 planner = solve(solver, m)
 
 # a, info = action_info(planner, ImplicitDistribution(new_problem))
 # breakpoint()
 
 # history = HistoryRecorder(max_steps=10)
-# hist = simulate(history, m, policy)
+# hist = simulate(history, m, planner, filter)
 # breakpoint()
 # b = 
 
-for (s,a,o) in stepthrough(m, planner, "s,a,o"):
-    print(s,a,o)
-    breakpoint()
+while True:
+    for (s,a,o) in stepthrough(m, planner, filter, "s,a,o"):
+        print(s,a,o)
+        breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")
 # for i in r:

@@ -59,23 +59,27 @@ def parse_thought(thought):
 
 # parse_thought(think("8 5 2 2"))
 
+# roll state out
+def rollout_state(state):
+    if state == None:
+        return 0
+    ro = rollout(state.problem, state.trajectory)
+
+    return reward(state.problem, parse_traj(ro)).item()
 
 # rollout
-def rollout(problem):
-    result = []
+def rollout(problem, result=[]):
 
-    while True:
+    while len(result) == 0 or len(result[-1][2]) > 1:
         # generate and parse thought
         thoughts = think(problem.strip())
         thought = parse_thought(thoughts)
         result.append(thought)
 
-        # if we run out of numbers, return
-        if len(thought[2]) == 1:
-            return thought[2][0], result
-
         # otherwise, keep going
         problem = " ".join([str(i) for i in thought[2]])
+
+    return result
 
 # generate a computation graph from steps
 @dataclass

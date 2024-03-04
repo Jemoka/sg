@@ -15,33 +15,39 @@ def msgify(text):
 
 def prompt_for_completion(text):
     print("COMPLETION")
-    # print("completion: running", text)
+    
+    # tmp = client.completions.create(
+    #     model="gpt-4-large",
+    #     prompt="Say this is a test",
+    #     max_tokens=7,
+    #     temperature=0
+    # )
+    # breakpoint()
+# print("completion: running", text)
     params = {
-        "model": "gpt-4-turbo",
-        "messages": msgify(text),
+        "model": "gpt-35-turbo",
+        "prompt": text,
         "max_tokens": 25,
         "temperature": 0.7,
-        "logprobs": False,
         "n": 1,
     }
 
-    completion = client.chat.completions.create(**params)
+    completion = client.completions.create(**params)
     return completion
 
 def prompt_for_next(text):
     print("NTP")
     # print("ntp: running", text)
     params = {
-        "model": "gpt-4-turbo",
-        "messages": msgify(text),
+        "model": "gpt-35-turbo",
+        "prompt": text,
         "max_tokens": 1,
         "temperature": 0,
-        "logprobs": True,
-        "top_logprobs": 5,
+        "logprobs": 5,
         "n": 1,
     }
 
-    completion = client.chat.completions.create(**params)
+    completion = client.completions.create(**params)
     return completion
 
 
