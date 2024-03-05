@@ -166,10 +166,10 @@ def generator(s,a,rng):
         obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
 
         # mode said sure
-        if torch.argmax(res).item() == 0:
-            rew += 1
-        elif torch.argmax(res).item() == 2:
-            rew -= 1
+        # if torch.argmax(res).item() == 0:
+        #     rew += 1
+        # elif torch.argmax(res).item() == 2:
+        #     rew -= 1
 
     # g = generation()
     return namedtuple(["sp", "o", "r"], (next_state, obs, rew))
@@ -243,7 +243,7 @@ planner = solve(solver, m)
 # b = 
 
 while True:
-    for (s,sp, a,o) in stepthrough(m, planner, filter, "s,sp,a,o"):
+    for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):
         # s1 = parse_traj(s.trajectory) if s != None else ""
         s2 = " | ".join(step_traj(sp.trajectory)) if sp != None else ""
         print(f"DID: {a}")
@@ -252,7 +252,7 @@ while True:
             print(f"GOT: {s2} <{o}>")
             # print(sp.trajectory)
         # print(s,a,o)
-    print(parse_traj(s.trajectory))
+    print(parse_traj(s.trajectory), r)
     breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")
