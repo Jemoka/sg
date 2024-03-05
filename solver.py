@@ -95,7 +95,7 @@ def generator(s,a,rng):
 
     # calculate next state
     next_state = None
-    rew = 0
+    rew = 0.0
     obs = None
 
     # print(a)
@@ -112,6 +112,7 @@ def generator(s,a,rng):
         # if we are out of states, continue just loops
         if len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1:
             next_state = s
+            rew -= 1
         else:
             problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
                     if len(s.trajectory) > 0 else s.problem)
@@ -129,7 +130,7 @@ def generator(s,a,rng):
         sp = None
         # if we are at a good stopping point
         is_stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
-        if not is_stopping:
+        if is_stopping:
             traj = step_traj(s.trajectory)
             # res = value(s.problem, traj)
             rew += reward(s.problem, traj).item()
@@ -142,13 +143,14 @@ def generator(s,a,rng):
             #     rew = -10
         else:
             traj = ""
-            res = 0
-            rew = 0
+            res = 0.0
+            rew += -10.0
+
         # otherwise, punish model
         # print(-100 if not is_stopping else rew*10)
         return namedtuple(["sp", "o", "r"], (None,
                                              J.rand(Uniform(["sure", "likely", "impossible"])),
-                                             -100 if not is_stopping else rew*10))
+                                             rew*10))
 
     # calculate next trajectory
     if len(next_state.trajectory) != 0:
@@ -158,7 +160,7 @@ def generator(s,a,rng):
 
     # # if next state has nothing, we are sad
     if len(next_state.trajectory) == 0:
-        rew -= 1
+        rew -= 1.0
     # else:
     # # calculate reward
     #     rew = reward(next_state.problem, next_traj)
@@ -266,7 +268,7 @@ while True:
             print(f"GOT: {s2} <{o}>")
             # print(sp.trajectory)
         # print(s,a,o)
-    print(parse_traj(s.trajectory), r)
+    print(parse_traj(s.trajectory), "|", r)
     breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")

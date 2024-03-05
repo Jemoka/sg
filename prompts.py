@@ -90,12 +90,6 @@ judge: 'sure'
 input: 4 4 6 8
 answer: (4 + 8) * (6 - 4) + 1 = 25
 judge: 'impossible'
-input: 2 9 10 12
-answer: 2 * (12 - 10) = 24
-judge: 'impossible'
-input: 4 9 10 13
-answer: (13 - 4) * (10 - 9) = 24
-judge: 'impossible'
 input: {task}
 answer: {solution}
 judge: '""".strip()
