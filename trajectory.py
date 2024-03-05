@@ -27,11 +27,15 @@ def get_problem():
     sample = DATA[random.randint(0, len(DATA)-1)]
     return sample[1]
 
-def new_problem(_):
-    return State(
-        problem=get_problem(),
-        trajectory=[]
-    )
+def new_problem():
+    p = get_problem()
+    def g(_):
+        return State(
+            problem=p,
+            trajectory=[]
+        )
+
+    return g
 
 def random_state(_):
     problem = get_problem()
