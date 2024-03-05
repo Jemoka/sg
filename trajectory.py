@@ -134,7 +134,7 @@ def parse_traj(traj):
     if len(traj) == 0:
         # print("PARSE EMPTY TRAJ!!")
         return ""
-    oup = traj[-1][-1][0]
+    oup = traj[-1][1]
 
     for indx in reversed(range(len(traj))):
         intermediate = stringify_graph(graphify_traj(traj[indx:]))
@@ -142,7 +142,19 @@ def parse_traj(traj):
 
     return oup
 
-# r = think("3 9 2 1")
+def step_traj(traj):
+    stp = []
+    for l, r, _ in traj:
+        stp.append(f"{l} = {r}")
+    return stp
+    
+
+ # r = think("3 9 2 1")
+# traj =  [('4 * 5', 20, [8, 9, 20]), ('8 * 9', 72, [20, 72])]
+# step_traj(traj)
+
+# graphify_traj(traj)
+
 # r
 # parse_thought(r[0])
 

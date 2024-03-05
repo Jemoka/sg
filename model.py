@@ -22,7 +22,7 @@ def think(task):
         prompt = P(task)
 
         output = [i.strip() for i in 
-                prompt_for_completion(prompt).choices[0].text.split("\n")
+                prompt_for_completion(prompt).split("\n")
                 if i.strip() != ""]
 
     return output[0]
@@ -34,12 +34,12 @@ def value(task, steps):
 
     # sample output distribution
     # inputs = tokenizer(prompt.strip(), return_tensors="pt")
-    output = prompt_for_next(prompt).choices[0].logprobs.top_logprobs[0]
+    output = prompt_for_next(prompt)
 
     # calculate probablitiies
-    dist_sure = 0.0
-    dist_likely = 0.0
-    dist_impossible = 0.0
+    dist_sure = 0.001
+    dist_likely = 0.001
+    dist_impossible = 0.001
 
     for i,j in output.items():
         if i == "sure":
@@ -52,9 +52,8 @@ def value(task, steps):
 
     # grab the distributions for each class and rescale
     try:
-        probs = F.softmax(torch.tensor([
-            dist_sure, dist_likely, dist_impossible
-            ]), dim=0)
+        probs = F.softmax(torch.tensor([dist_sure, dist_likely, dist_impossible]),
+                          dim=0)
     except RuntimeError:
         breakpoint()
 
@@ -67,11 +66,11 @@ def reward(task, solution):
 
     # sample output distribution
     # inputs = tokenizer(prompt.strip(), return_tensors="pt")
-    output = prompt_for_next(prompt).choices[0].logprobs.top_logprobs[0]
+    output = prompt_for_next(prompt)
 
     # calculate probablitiies
-    dist_sure = 0
-    dist_impossible = 0
+    dist_sure = 0.001
+    dist_impossible = 0.001
 
 
     for i,j in output.items():

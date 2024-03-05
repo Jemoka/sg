@@ -14,6 +14,18 @@ Possible next steps:
 14 / 2 = 7 (left: 7 8 8)
 14 * 2 = 28 (left: 28 8 8)
 14 - 2 = 12 (left: 8 8 12)
+
+Input: 2 8 14
+Possible next steps:
+2 * 8 = 16 (left: 14 16)
+14 - 8 = 6 (left: 2 6)
+14 * 2 = 28 (left: 28 8)
+14 - 2 = 12 (left: 8 12)
+
+Input: 2 8
+Possible next steps:
+2 * 8 = 16 (left: 16)
+
 Input: {task}
 Possible next steps:
 """.strip() 
@@ -34,31 +46,32 @@ problem: 11 12
 11 / 12 = 0.91
 judge: 'impossible'
 problem: 4 4 10
-4 + 4 + 10 = 8 + 10 = 18
-4 * 10 - 4 = 40 - 4 = 36
-(10 - 4) * 4 = 6 * 4 = 24
+10 - 4 = 6
+6 * 4 = 24
 judge: 'sure'
 problem: 4 9 11
-9 + 11 + 4 = 20 + 4 = 24
+9 + 11 = 20
+20 + 4 = 24
 judge: 'sure'
 problem: 5 7 8
-5 + 7 + 8 = 12 + 8 = 20
-(8 - 5) * 7 = 3 * 7 = 21
+8 - 5 = 3
+3 * 7 = 21
 judge: 'likely'
 problem: 5 6 6
-5 + 6 + 6 = 17
-(6 - 5) * 6 = 1 * 6 = 6
+6 - 5 = 1
+1 * 6 = 6
 judge: 'likely'
 problem: 10 10 11
-10 + 10 + 11 = 31
-(11 - 10) * 10 = 10
+11 - 10 = 1
+1 * 10 = 10
 judge: 'impossible'
 problem: 1 3 3
-1 * 3 * 3 = 9
-(1 + 3) * 3 = 12
+1 + 3 = 4
+4 * 3 = 12
 judge: 'impossible'
 problem: 1 5 5
-1 * 5 * 5 = 24
+1 * 5 = 5
+5 * 5 = 24
 judge: 'impossible'
 problem: {task}
 {steps}

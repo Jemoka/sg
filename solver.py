@@ -82,12 +82,12 @@ def generator_weight(s, a, sp, o):
     if s == None or sp == None:
         return 0
     # get a trajectory
-    next_traj = parse_traj(sp.trajectory)
+    next_traj = step_traj(sp.trajectory)
     # make an observation on our current state
     if len(sp.trajectory) == 0:
         return 1/3
     else:
-        res = value(sp.problem, [next_traj])
+        res = value(sp.problem, next_traj)
         return res.tolist()[["sure", "likely", "impossible"].index(o)]
 
 def generator(s,a,rng):
@@ -98,10 +98,10 @@ def generator(s,a,rng):
     rew = 0
     obs = None
 
+    # print(a)
     # if we are rolling back, do so
     if a == "rollback":
         # if we try to roll back 
-        # print("ROLLBACK!")
         ns = State(
             problem=s.problem,
             trajectory=s.trajectory[:-1]
@@ -109,7 +109,6 @@ def generator(s,a,rng):
         next_state = ns
     # otherwise, sample a single thought
     elif a == "continue":
-        # print("CONTINUE!")
         problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
                    if len(s.trajectory) > 0 else s.problem)
 
@@ -123,20 +122,20 @@ def generator(s,a,rng):
                 next_state = sp
     # if we are submitting, evaluate and return
     elif a == "submit":
-        # print("SUBMIT!")
         sp = None
         # if we are at a good stopping point
         is_stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
         if not is_stopping:
-            traj = parse_traj(s.trajectory)
-            res = value(s.problem, [traj])
+            traj = step_traj(s.trajectory)
+            # res = value(s.problem, traj)
+            rew += reward(s.problem, traj).item()
 
             # mode said sure
-            if torch.argmax(res).item() == 0:
-                rew = 10
-            # mode said impossible
-            elif torch.argmax(res).item() == 2:
-                rew = -10
+            # if torch.argmax(res).item() == 0:
+            #     rew = 10
+            # # mode said impossible
+            # elif torch.argmax(res).item() == 2:
+            #     rew = -10
         else:
             traj = ""
             res = 0
@@ -144,11 +143,11 @@ def generator(s,a,rng):
         # otherwise, punish model
         return namedtuple(["sp", "o", "r"], (None,
                                              J.rand(Uniform(["sure", "likely", "impossible"])),
-                                             -100 if not is_stopping else rew))
+                                             -100 if not is_stopping else rew*10))
 
     # calculate next trajectory
     if len(next_state.trajectory) != 0:
-        next_traj = parse_traj(next_state.trajectory)
+        next_traj = step_traj(next_state.trajectory)
     else:
         next_traj = []
 
@@ -163,7 +162,7 @@ def generator(s,a,rng):
     if len(next_state.trajectory) == 0:
         obs = J.rand(Uniform(["sure", "likely", "impossible"]))
     else:
-        res = value(next_state.problem, [next_traj])
+        res = value(next_state.problem, next_traj)
         obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
 
         # mode said sure
@@ -192,7 +191,7 @@ m = QuickPOMDP(
     actions = ["continue", "rollback", "submit"],
     observations = ["sure", "likely", "impossible"],
     discount = 0.5,
-    isterminal = stop,
+    isterminal = lambda x : x == None,
     # transition = transition,
     # observation = observation,
     # reward = reward_,
@@ -246,11 +245,14 @@ planner = solve(solver, m)
 while True:
     for (s,sp, a,o) in stepthrough(m, planner, filter, "s,sp,a,o"):
         # s1 = parse_traj(s.trajectory) if s != None else ""
-        s2 = parse_traj(sp.trajectory) if sp != None else ""
+        s2 = " | ".join(step_traj(sp.trajectory)) if sp != None else ""
         print(f"DID: {a}")
         if s2 != "":
+            # breakpoint()
             print(f"GOT: {s2} <{o}>")
+            # print(sp.trajectory)
         # print(s,a,o)
+    print(parse_traj(s.trajectory))
     breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")
