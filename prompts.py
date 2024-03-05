@@ -22,10 +22,6 @@ Possible next steps:
 14 * 2 = 28 (left: 28 8)
 14 - 2 = 12 (left: 8 12)
 
-Input: 2 8
-Possible next steps:
-2 * 8 = 16 (left: 16)
-
 Input: {task}
 Possible next steps:
 """.strip() 

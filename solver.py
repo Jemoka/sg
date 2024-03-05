@@ -109,17 +109,21 @@ def generator(s,a,rng):
         next_state = ns
     # otherwise, sample a single thought
     elif a == "continue":
-        problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
-                   if len(s.trajectory) > 0 else s.problem)
+        # if we are out of states, continue just loops
+        if len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1:
+            next_state = s
+        else:
+            problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
+                    if len(s.trajectory) > 0 else s.problem)
 
-        thought = None
+            thought = None
 
-        while not thought:
-            sp = deepcopy(s)
-            thought = parse_thought(think(problem))
-            if thought: 
-                sp.trajectory.append(thought)
-                next_state = sp
+            while not thought:
+                sp = deepcopy(s)
+                thought = parse_thought(think(problem))
+                if thought: 
+                    sp.trajectory.append(thought)
+                    next_state = sp
     # if we are submitting, evaluate and return
     elif a == "submit":
         sp = None
@@ -141,6 +145,7 @@ def generator(s,a,rng):
             res = 0
             rew = 0
         # otherwise, punish model
+        # print(-100 if not is_stopping else rew*10)
         return namedtuple(["sp", "o", "r"], (None,
                                              J.rand(Uniform(["sure", "likely", "impossible"])),
                                              -100 if not is_stopping else rew*10))
@@ -162,8 +167,16 @@ def generator(s,a,rng):
     if len(next_state.trajectory) == 0:
         obs = J.rand(Uniform(["sure", "likely", "impossible"]))
     else:
-        res = value(next_state.problem, next_traj)
-        obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
+        res = torch.argmax(value(next_state.problem, next_traj)).item()
+        # breakpoint()
+
+        if res == 0:
+            obs = "sure"
+        elif res == 1:
+            obs = "likely"
+        elif res == 2:
+            obs = "impossible"
+        # obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
 
         # mode said sure
         # if torch.argmax(res).item() == 0:
@@ -230,7 +243,8 @@ m = QuickPOMDP(
 # ImplicitDistribution(random_state)
 # solver = SARSOPSolver()
 filter = BootstrapFilter(m, 10)
-solver = POMCPSolver(max_depth = 3, tree_queries = 3, estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
+solver = POMCPSolver(max_depth = 10, tree_queries = 5,
+                     estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
 # solver = POMCPOWSolver()
 planner = solve(solver, m)
 

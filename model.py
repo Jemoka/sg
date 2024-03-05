@@ -9,12 +9,36 @@ from prompts import value as V
 from prompts import reward as R
 from oai import prompt_for_completion, prompt_for_next
 
+from collections import defaultdict
+
+import re
+import random
+from functools import cache
+
 # model = LlamaForCausalLM.from_pretrained("/juice5/scr5/nlp/llama-2-hf-latest/Llama-2-7b-chat-hf", use_cache=True, low_cpu_mem_usage=True, device_map = 'cuda')
 # tokenizer = AutoTokenizer.from_pretrained("/juice5/scr5/nlp/llama-2-hf-latest/Llama-2-7b-chat-hf")
 
+THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: \d+)+)\)")
+THOUGHT_CACHE = defaultdict(list)
+
+def list_to_tuple(function):
+    def wrapper(*args):
+        args = [tuple(x) if isinstance(x, list) else x for x in args]
+        result = function(*args)
+        result = tuple(result) if isinstance(result, list) else result
+        return result
+    return wrapper
+
 # generate thoughts
 def think(task):
+    taskhash = tuple(sorted([int(i) for i in task.split(" ")]))
 
+    if len(THOUGHT_CACHE[taskhash]) > 0:
+        return random.choice(THOUGHT_CACHE[taskhash])
+
+    # print("THINKING", task)
+
+    # we need to get some more
     output = []
 
     while len(output) == 0:
@@ -25,9 +49,17 @@ def think(task):
                 prompt_for_completion(prompt).split("\n")
                 if i.strip() != ""]
 
-    return output[0]
+    # for each valid thought, append
+    for i in output:
+        if THOUGHT.match(i):
+            THOUGHT_CACHE[taskhash].append(i)
+
+    return think(task)
+
 
 # generate a value 
+@list_to_tuple
+@cache
 def value(task, steps):
     # fill in value prompt template
     prompt = V(task, steps)
@@ -60,6 +92,8 @@ def value(task, steps):
     return probs
 
 # perform reward scoring
+@list_to_tuple
+@cache
 def reward(task, solution):
     # fill in value prompt template
     prompt = R(task, solution)
