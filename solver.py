@@ -144,7 +144,7 @@ def generator(s,a,rng):
         else:
             traj = ""
             res = 0.0
-            rew += -10.0
+            rew += -1.0
 
         # otherwise, punish model
         # print(-100 if not is_stopping else rew*10)
