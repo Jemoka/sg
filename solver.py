@@ -82,9 +82,9 @@ def generator_weight(s, a, sp, o):
     if s == None or sp == None:
         return 0
     # get a trajectory
-    next_traj = step_traj(sp.trajectory)
+    next_traj = step_traj(get_traj(sp))
     # make an observation on our current state
-    if len(sp.trajectory) == 0:
+    if len(next_traj) == 0:
         return 1/3
     else:
         res = value(sp.problem, next_traj)
@@ -95,43 +95,34 @@ def generator(s,a,rng):
 
     # calculate next state
     next_state = None
-    rew = 0.0
+    rew = -3*len(get_traj(s))
     obs = None
 
     # print(a)
     # if we are rolling back, do so
     if a == "rollback":
         # if we try to roll back 
-        ns = State(
-            problem=s.problem,
-            trajectory=s.trajectory[:-1]
-        )
-        next_state = ns
-    # otherwise, sample a single thought
-    elif a == "continue":
-        # if we are out of states, continue just loops
-        if len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1:
+        if len(s.subproblem) == 4:
             next_state = s
             rew -= 1
         else:
-            problem = (" ".join([str(i) for i in s.trajectory[-1][-1]])
-                    if len(s.trajectory) > 0 else s.problem)
-
-            thought = None
-
-            while not thought:
-                sp = deepcopy(s)
-                thought = parse_thought(think(problem))
-                if thought: 
-                    sp.trajectory.append(thought)
-                    next_state = sp
+            next_state = rollback(s)
+    # otherwise, sample a single thought
+    elif a == "continue":
+        # if we are out of states, continue just loops
+        if len(s.subproblem) == 1:
+            next_state = s
+            rew -= 1
+        else:
+            next_state = increment(s)
     # if we are submitting, evaluate and return
     elif a == "submit":
         sp = None
+        rew = 0.0
         # if we are at a good stopping point
-        is_stopping = len(s.trajectory) > 0 and len(s.trajectory[-1][-1]) == 1
+        is_stopping = len(s.subproblem) == 1
         if is_stopping:
-            traj = step_traj(s.trajectory)
+            traj = parse_traj(get_traj(s))
             # res = value(s.problem, traj)
             rew += reward(s.problem, traj).item()
 
@@ -153,22 +144,9 @@ def generator(s,a,rng):
                                              rew*10))
 
     # calculate next trajectory
-    if len(next_state.trajectory) != 0:
-        next_traj = step_traj(next_state.trajectory)
-    else:
-        next_traj = []
-
-    # # if next state has nothing, we are sad
-    if len(next_state.trajectory) == 0:
-        rew -= 1.0
-    # else:
-    # # calculate reward
-    #     rew = reward(next_state.problem, next_traj)
-
-    # make an observation on our current state
-    if len(next_state.trajectory) == 0:
-        obs = J.rand(Uniform(["sure", "likely", "impossible"]))
-    else:
+    if len(next_state.subproblem) != 4:
+        next_traj = step_traj(get_traj(next_state))
+        # make an observation on our current state
         res = torch.argmax(value(next_state.problem, next_traj)).item()
         # breakpoint()
 
@@ -179,6 +157,15 @@ def generator(s,a,rng):
         elif res == 2:
             obs = "impossible"
         # obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
+    else:
+        next_traj = []
+        rew -= 1.0
+        obs = J.rand(Uniform(["sure", "likely", "impossible"]))
+
+    # # if next state has nothing, we are sad
+    # else:
+    # # calculate reward
+    #     rew = reward(next_state.problem, next_traj)
 
         # mode said sure
         # if torch.argmax(res).item() == 0:
@@ -245,7 +232,7 @@ m = QuickPOMDP(
 # ImplicitDistribution(random_state)
 # solver = SARSOPSolver()
 filter = BootstrapFilter(m, 10)
-solver = POMCPSolver(max_depth = 10, tree_queries = 5,
+solver = POMCPSolver(max_depth = 10, tree_queries = 3,
                      estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
 # solver = POMCPOWSolver()
 planner = solve(solver, m)
@@ -261,14 +248,14 @@ planner = solve(solver, m)
 while True:
     for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):
         # s1 = parse_traj(s.trajectory) if s != None else ""
-        s2 = " | ".join(step_traj(sp.trajectory)) if sp != None else ""
+        s2 = " | ".join(step_traj(get_traj(sp))) if sp != None else ""
         print(f"DID: {a}")
         if s2 != "":
             # breakpoint()
             print(f"GOT: {s2} <{o}>")
             # print(sp.trajectory)
         # print(s,a,o)
-    print(parse_traj(s.trajectory), "|", r)
+    print(parse_traj(get_traj(s)), "|", r)
     breakpoint()
 
 # r = stepthrough(m, policy, "s,a,r,sp,o")

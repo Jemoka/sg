@@ -20,6 +20,8 @@ from functools import cache
 
 THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: \d+)+)\)")
 THOUGHT_CACHE = defaultdict(list)
+VALUE_CACHE = {}
+REWARD_CACHE = {}
 
 def list_to_tuple(function):
     def wrapper(*args):
@@ -36,7 +38,7 @@ def think(task):
     if len(THOUGHT_CACHE[taskhash]) > 0:
         return random.choice(THOUGHT_CACHE[taskhash])
 
-    # print("THINKING", task)
+    print("THINKING", task)
 
     # we need to get some more
     output = []
@@ -62,11 +64,20 @@ def think(task):
 @cache
 def value(task, steps):
     # fill in value prompt template
-    prompt = V(task, steps)
+    cachestring = task+"\n".join(steps)
 
-    # sample output distribution
-    # inputs = tokenizer(prompt.strip(), return_tensors="pt")
-    output = prompt_for_next(prompt)
+    if not VALUE_CACHE.get(cachestring):
+        # try to get cache, otherwise, eval
+        print("EVALUATING", task, "|", steps[-1])
+        prompt = V(task, steps)
+
+        # sample output distribution
+        # inputs = tokenizer(prompt.strip(), return_tensors="pt")
+        output = prompt_for_next(prompt)
+        VALUE_CACHE[cachestring] = output
+
+    output = VALUE_CACHE[cachestring]
+        
 
     # calculate probablitiies
     dist_sure = 0.001
@@ -95,12 +106,32 @@ def value(task, steps):
 @list_to_tuple
 @cache
 def reward(task, solution):
+    ## TODO TODO HACK EXOGENOUS REWARD SANITY CHECK REMOVE ME ##
+    if int(solution.split("=")[-1].strip()) == 24:
+        return torch.tensor(5)
+    else:
+        return torch.tensor(-5)
+    ## ### ####
+
+    cachestring = task+solution
+
+    if not REWARD_CACHE.get(cachestring):
+        # try to get cache, otherwise, eval
+        print("REWARDING", task, "|", solution)
+        prompt = R(task, solution)
+        output = prompt_for_next(prompt)
+
+        # sample output distribution
+        # inputs = tokenizer(prompt.strip(), return_tensors="pt")
+        REWARD_CACHE[cachestring] = output
+
+    output = REWARD_CACHE[cachestring]
+        
+
     # fill in value prompt template
-    prompt = R(task, solution)
 
     # sample output distribution
     # inputs = tokenizer(prompt.strip(), return_tensors="pt")
-    output = prompt_for_next(prompt)
 
     # calculate probablitiies
     dist_sure = 0.001

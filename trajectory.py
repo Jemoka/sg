@@ -1,12 +1,15 @@
 from model import think, value, reward
 from dataclasses import dataclass
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 from enum import Enum
+from collections import defaultdict
 import re
 import random
+from copy import deepcopy
 
 import csv
 import os 
+import random
 
 
 THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: \d+)+)\)")
@@ -15,8 +18,39 @@ OP = re.compile(r"(\d+) ?([+\-*/]) ?(\d+)")
 @dataclass
 class State:
     problem: str
-    trajectory: List[Tuple[str, int, List[int]]]
+    # trajectory: List[Tuple[str, int, List[int]]]
+    subproblem: List[int]
+    operation: Optional[Tuple[str, int, List[int]]]
+    prev: Optional["State"]
 
+def serialize_state(s):
+    return s.problem+"|"+(" ".join(str(i) for i in s.subproblem))
+
+def increment(p):
+    nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem)))
+
+    while not nxt:
+        nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem)))
+        
+    ns = deepcopy(p)
+
+    ns.subproblem = nxt[2]
+    ns.operation = nxt
+    ns.prev = p
+
+    return ns
+
+def rollback(p):
+    return p.prev
+
+def get_traj(r):
+    trajectory = [r.operation]
+
+    while r.operation != None:
+        r = r.prev
+        trajectory.append(r.operation)
+
+    return list(reversed(trajectory))[1:]
 
 with open(os.path.join(os.path.abspath(os.path.join(__file__, os.pardir)),
                        "./24.csv")) as df:
@@ -32,18 +66,12 @@ def new_problem():
     def g(_):
         return State(
             problem=p,
-            trajectory=[]
+            subproblem=[int(i) for i in p.split(" ")],
+            operation=None,
+            prev=None
         )
 
     return g
-
-def random_state(_):
-    problem = get_problem()
-    ro = rollout(problem)
-    return State(
-        problem=problem,
-        trajectory=ro[:random.randint(0, len(ro))]
-    )
 
 # utility to parse a thought
 def parse_thought(thought):
@@ -51,7 +79,6 @@ def parse_thought(thought):
         expr, remain = THOUGHT.findall(thought)[0]
     except IndexError:
         return None
-        breakpoint()
     # split out remaining values
     remain = [int(i) for i in remain.strip().split(" ")]
     # split out the current expression
@@ -67,28 +94,13 @@ def parse_thought(thought):
 def rollout_state(state):
     if state == None:
         return 0
-    ro = rollout(state.problem, state.trajectory)
 
-    if ro == None:
-        return 0
+    r = state
 
-    return reward(state.problem, parse_traj(ro)).item()
+    while len(r.subproblem) != 1:
+        r = increment(r)
 
-# rollout
-def rollout(problem, result=[]):
-
-    while len(result) == 0 or len(result[-1][2]) > 1:
-        # generate and parse thought
-        thoughts = think(problem.strip())
-        thought = parse_thought(thoughts)
-        if thought == None:
-            return None
-        result.append(thought)
-
-        # otherwise, keep going
-        problem = " ".join([str(i) for i in thought[2]])
-
-    return result
+    return reward(state.problem, parse_traj(get_traj(r))).item()
 
 # generate a computation graph from steps
 @dataclass
