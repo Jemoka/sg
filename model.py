@@ -38,7 +38,7 @@ def think(task):
     if len(THOUGHT_CACHE[taskhash]) > 0:
         return random.choice(THOUGHT_CACHE[taskhash])
 
-    print("THINKING", task)
+    # print("THINKING", task)
 
     # we need to get some more
     output = []
@@ -64,12 +64,12 @@ def think(task):
 @cache
 def value(task, steps):
     # fill in value prompt template
-    cachestring = task+"\n".join(steps)
+    cachestring = task+steps
 
     if not VALUE_CACHE.get(cachestring):
         # try to get cache, otherwise, eval
-        print("EVALUATING", task, "|", steps[-1])
-        prompt = V(task, steps)
+        # print("EVALUATING", task, "|", steps[-1])
+        prompt = V(task, [steps])
 
         # sample output distribution
         # inputs = tokenizer(prompt.strip(), return_tensors="pt")
@@ -108,16 +108,16 @@ def value(task, steps):
 def reward(task, solution):
     ## TODO TODO HACK EXOGENOUS REWARD SANITY CHECK REMOVE ME ##
     if int(solution.split("=")[-1].strip()) == 24:
-        return torch.tensor(5)
+        return torch.tensor(30.0)
     else:
-        return torch.tensor(-5)
+        return torch.tensor(-30.0)
     ## ### ####
 
     cachestring = task+solution
 
     if not REWARD_CACHE.get(cachestring):
         # try to get cache, otherwise, eval
-        print("REWARDING", task, "|", solution)
+        # print("REWARDING", task, "|", scolution)
         prompt = R(task, solution)
         output = prompt_for_next(prompt)
 

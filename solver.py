@@ -4,7 +4,7 @@ from julia.api import Julia
 from quickpomdps import QuickPOMDP
 
 from julia.Main import Float64
-from julia.POMDPs import solve, pdf, simulate
+from julia.POMDPs import solve, pdf, simulate, initialstate
 from julia.QMDP import QMDPSolver
 
 from julia.POMDPTools import ImplicitDistribution, Deterministic, Uniform, SparseCat, HistoryRecorder
@@ -16,6 +16,7 @@ from julia.POMCPOW import POMCPOWSolver
 from julia.POMDPModels import BabyPOMDP
 from julia.NamedTupleTools import namedtuple
 from julia.ParticleFilters import BootstrapFilter
+from julia.D3Trees import inbrowser, D3Tree
 
 import julia.Main as J
 
@@ -81,8 +82,9 @@ def stop(s):
 def generator_weight(s, a, sp, o):
     if s == None or sp == None:
         return 0
+    o = get_reasoning(o)
     # get a trajectory
-    next_traj = step_traj(get_traj(sp))
+    next_traj = parse_traj(get_traj(sp))
     # make an observation on our current state
     if len(next_traj) == 0:
         return 1/3
@@ -90,13 +92,21 @@ def generator_weight(s, a, sp, o):
         res = value(sp.problem, next_traj)
         return res.tolist()[["sure", "likely", "impossible"].index(o)]
 
+counter = 0
+
 def generator(s,a,rng):
+    global counter
+    counter += 1
+
+    # if counter % 10 == 0:
+        # print(counter)
     # print("NEXT:", len(s.trajectory))
 
     # calculate next state
     next_state = None
-    rew = -3*len(get_traj(s))
     obs = None
+    # non-submit actions have a default penalty of -1
+    rew = -1.0
 
     # print(a)
     # if we are rolling back, do so
@@ -104,76 +114,44 @@ def generator(s,a,rng):
         # if we try to roll back 
         if len(s.subproblem) == 4:
             next_state = s
-            rew -= 1
         else:
             next_state = rollback(s)
     # otherwise, sample a single thought
     elif a == "continue":
-        # if we are out of states, continue just loops
+        # if we are out of states, evaluate
         if len(s.subproblem) == 1:
-            next_state = s
-            rew -= 1
+            next_state = None
+            traj = parse_traj(get_traj(s))
+            rew = reward(s.problem, traj).item()
         else:
             next_state = increment(s)
-    # if we are submitting, evaluate and return
-    elif a == "submit":
-        sp = None
-        rew = 0.0
-        # if we are at a good stopping point
-        is_stopping = len(s.subproblem) == 1
-        if is_stopping:
-            traj = parse_traj(get_traj(s))
-            # res = value(s.problem, traj)
-            rew += reward(s.problem, traj).item()
-
-            # mode said sure
-            # if torch.argmax(res).item() == 0:
-            #     rew = 10
-            # # mode said impossible
-            # elif torch.argmax(res).item() == 2:
-            #     rew = -10
-        else:
-            traj = ""
-            res = 0.0
-            rew += -1.0
-
-        # otherwise, punish model
-        # print(-100 if not is_stopping else rew*10)
-        return namedtuple(["sp", "o", "r"], (None,
-                                             J.rand(Uniform(["sure", "likely", "impossible"])),
-                                             rew*10))
 
     # calculate next trajectory
-    if len(next_state.subproblem) != 4:
-        next_traj = step_traj(get_traj(next_state))
+    if next_state and len(next_state.subproblem) != 4:
+        # get a possible next trajectory
+        next_traj = parse_traj(get_traj(next_state))
         # make an observation on our current state
         res = torch.argmax(value(next_state.problem, next_traj)).item()
-        # breakpoint()
-
         if res == 0:
-            obs = "sure"
+            obs = seralize_obs(next_state.subproblem, "sure")
         elif res == 1:
-            obs = "likely"
+            obs = seralize_obs(next_state.subproblem, "likely")
         elif res == 2:
-            obs = "impossible"
-        # obs = J.rand(SparseCat(["sure", "likely", "impossible"], res.tolist()))
+            obs = seralize_obs(next_state.subproblem, "impossible")
+    # if we have no trajectory, we have a random observation
+    elif next_state:
+        next_traj = []
+        obs = J.rand(Uniform([seralize_obs(next_state.subproblem, "sure"),
+                              seralize_obs(next_state.subproblem, "likely"),
+                              seralize_obs(next_state.subproblem, "impossible")]))
+
     else:
         next_traj = []
-        rew -= 1.0
-        obs = J.rand(Uniform(["sure", "likely", "impossible"]))
+        obs = J.rand(Uniform([seralize_obs([], "sure"),
+                              seralize_obs([], "likely"),
+                              seralize_obs([], "impossible")]))
 
-    # # if next state has nothing, we are sad
-    # else:
-    # # calculate reward
-    #     rew = reward(next_state.problem, next_traj)
-
-        # mode said sure
-        # if torch.argmax(res).item() == 0:
-        #     rew += 1
-        # elif torch.argmax(res).item() == 2:
-        #     rew -= 1
-
-    # g = generation()
+    # return result. non-submit actions have a penalty of -1
     return namedtuple(["sp", "o", "r"], (next_state, obs, rew))
 
 roll_jl_bridge = jl.eval(f"""
@@ -190,9 +168,10 @@ rollout""")
 
 
 m = QuickPOMDP(
-    actions = ["continue", "rollback", "submit"],
-    observations = ["sure", "likely", "impossible"],
-    discount = 0.5,
+    actions = ["continue", "rollback"],
+    # observations = ["sure", "likely", "impossible"],
+    obstype = J.String,
+    discount = 1.0,
     isterminal = lambda x : x == None,
     # transition = transition,
     # observation = observation,
@@ -200,7 +179,7 @@ m = QuickPOMDP(
     initialstate = ImplicitDistribution(new_problem()),
     gen = generator,
     obs_weight = generator_weight,
-    default_action = "submit"
+    default_action = "rollback"
     # gen = function (s, a, rng)
     #     x, v = s
     #     vp = v + a*0.001 + cos(3*x)*-0.0025 + 0.0002*randn(rng)
@@ -232,7 +211,7 @@ m = QuickPOMDP(
 # ImplicitDistribution(random_state)
 # solver = SARSOPSolver()
 filter = BootstrapFilter(m, 10)
-solver = POMCPSolver(max_depth = 10, tree_queries = 3,
+solver = POMCPSolver(max_depth = 15, tree_queries = 500,
                      estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
 # solver = POMCPOWSolver()
 planner = solve(solver, m)
@@ -244,6 +223,52 @@ planner = solve(solver, m)
 # hist = simulate(history, m, planner, filter)
 # breakpoint()
 # b = 
+
+    # # print(a)
+    # # if we are rolling back, do so
+    # if a == "rollback":
+    #     # if we try to roll back 
+    #     if len(s.subproblem) == 4:
+    #         next_state = s
+    #     else:
+    #         next_state = rollback(s)
+    # # otherwise, sample a single thought
+    # elif a == "continue":
+    #     # if we are out of states, evaluate
+    #     if len(s.subproblem) == 1
+    #         next_state = None
+    #         traj = parse_traj(get_traj(s))
+    #         rew = reward(s.problem, traj).item()
+    #     else:
+    #         next_state = increment(s)
+
+
+# r = new_problem()(0)
+# while len(r.subproblem) > 1:
+#     a, info = action_info(planner, Deterministic(r), tree_in_info=True)
+#     if a == "rollback":
+#         if len(r.subproblem) == 4:
+#             next_state = r
+#         else:
+#             next_state = rollback(r)
+#     elif a == "continue":
+#         if len(r.subproblem) == 1:
+#             breakpoint()
+#         else:
+#             r = increment(r)
+#     s2 = " | ".join(step_traj(get_traj(r))) if r != None else ""
+#     print(f"DID: {a}")
+#     if s2 != "":
+#         # breakpoint()
+#         print(f"GOT: {s2}")
+
+#     counter = 0
+#     inbrowser(D3Tree(info["tree"]), "firefox")
+#     breakpoint()
+
+# breakpoint()
+
+    # inbrowser(D3Tree(info[:tree], init_expand=3))
 
 while True:
     for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):

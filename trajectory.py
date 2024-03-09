@@ -23,6 +23,13 @@ class State:
     operation: Optional[Tuple[str, int, List[int]]]
     prev: Optional["State"]
 
+def seralize_obs(subproblem, reasoning):
+    sp = " ".join([str(i) for i in subproblem])
+    return f"{sp}|{reasoning}"
+
+def get_reasoning(obs):
+    return obs.split("|")[1].strip()
+
 def serialize_state(s):
     return s.problem+"|"+(" ".join(str(i) for i in s.subproblem))
 
@@ -32,11 +39,12 @@ def increment(p):
     while not nxt:
         nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem)))
         
-    ns = deepcopy(p)
-
-    ns.subproblem = nxt[2]
-    ns.operation = nxt
-    ns.prev = p
+    ns = State(
+        problem=p.problem,
+        subproblem = nxt[2],
+        operation = nxt,
+        prev = p
+    )
 
     return ns
 
@@ -58,8 +66,9 @@ with open(os.path.join(os.path.abspath(os.path.join(__file__, os.pardir)),
     DATA = [i for i in csv.reader(df)][1:][:-50]
 
 def get_problem():
-    sample = DATA[random.randint(0, len(DATA)-1)]
-    return sample[1]
+    # sample = DATA[random.randint(0, len(DATA)-1)]
+    # return sample[1]
+    return "1 1 4 6"
 
 def new_problem():
     p = get_problem()
