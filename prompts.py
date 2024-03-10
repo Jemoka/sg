@@ -1,6 +1,6 @@
 def propose(task):
     return f"""
-Do not divide indivisible numbers. Follow the output format exactly. Do not say extra words. 
+Provide at exactly 6 possible next steps for a given input. Do not divide indivisible numbers. Do *NOT* use negative numbers. Follow the output format exactly. Do not say extra words. 
 
 Input: 2 8 8 14
 Possible next steps:
@@ -9,10 +9,6 @@ Possible next steps:
 8 / 2 = 4 (left: 4 8 14)
 8 - 2 = 6 (left: 6 8 14)
 14 + 2 = 16 (left: 8 8 16)
-8 * 2 = 16 (left: 16 8 14)
-14 - 8 = 6 (left: 2 6 8)
-14 / 2 = 7 (left: 7 8 8)
-14 * 2 = 28 (left: 28 8 8)
 14 - 2 = 12 (left: 8 8 12)
 
 Input: 2 8 14
@@ -21,6 +17,8 @@ Possible next steps:
 14 - 8 = 6 (left: 2 6)
 14 * 2 = 28 (left: 28 8)
 14 - 2 = 12 (left: 8 12)
+2 + 8 = 10 (left: 10 14)
+14 / 2 = 7 (left: 7 8)
 
 Input: {task}
 Possible next steps:
@@ -74,6 +72,12 @@ answer: (13 - 9) * (10 - 4) = 24
 judge: 'sure'
 input: 4 4 6 8
 answer: (4 + 8) * (6 - 4) + 1 = 25
+judge: 'impossible'
+input: 2 9 10 12
+answer: 2 * (12 - 10) = 24
+judge: 'impossible'
+input: 4 9 10 13
+answer: (13 - 4) * (10 - 9) = 24
 judge: 'impossible'
 input: {task}
 answer: {solution}

@@ -117,14 +117,15 @@ def generator(s,a,rng):
         else:
             next_state = rollback(s)
     # otherwise, sample a single thought
-    elif a == "continue":
+    elif "continue" in a:
+        n = int(a.replace("continue", ""))
         # if we are out of states, evaluate
         if len(s.subproblem) == 1:
             next_state = None
             traj = parse_traj(get_traj(s))
             rew = reward(s.problem, traj).item()
         else:
-            next_state = increment(s)
+            next_state = increment(s, n)
 
     # calculate next trajectory
     if next_state and len(next_state.subproblem) != 4:
@@ -168,7 +169,13 @@ rollout""")
 
 
 m = QuickPOMDP(
-    actions = ["continue", "rollback"],
+    actions = ["continue0",
+               "continue1",
+               "continue2",
+               "continue3",
+               "continue4",
+               "continue5",
+               "rollback"],
     # observations = ["sure", "likely", "impossible"],
     obstype = J.String,
     discount = 1.0,
@@ -248,14 +255,15 @@ planner = solve(solver, m)
 #     a, info = action_info(planner, Deterministic(r), tree_in_info=True)
 #     if a == "rollback":
 #         if len(r.subproblem) == 4:
-#             next_state = r
+#             r = r
 #         else:
-#             next_state = rollback(r)
-#     elif a == "continue":
+#             r = rollback(r)
+#     elif "continue" in a:
+#         n = int(a.replace("continue", ""))
 #         if len(r.subproblem) == 1:
 #             breakpoint()
 #         else:
-#             r = increment(r)
+#             r = increment(r, n)
 #     s2 = " | ".join(step_traj(get_traj(r))) if r != None else ""
 #     print(f"DID: {a}")
 #     if s2 != "":

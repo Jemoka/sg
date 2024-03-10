@@ -12,7 +12,7 @@ import os
 import random
 
 
-THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: \d+)+)\)")
+THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: -?\d+)+)\)")
 OP = re.compile(r"(\d+) ?([+\-*/]) ?(\d+)")
 
 @dataclass
@@ -33,11 +33,11 @@ def get_reasoning(obs):
 def serialize_state(s):
     return s.problem+"|"+(" ".join(str(i) for i in s.subproblem))
 
-def increment(p):
-    nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem)))
+def increment(p,n):
+    nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem),n))
 
-    while not nxt:
-        nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem)))
+    if not nxt:
+        breakpoint()
         
     ns = State(
         problem=p.problem,
@@ -107,7 +107,7 @@ def rollout_state(state):
     r = state
 
     while len(r.subproblem) != 1:
-        r = increment(r)
+        r = increment(r, random.randint(0,5))
 
     return reward(state.problem, parse_traj(get_traj(r))).item()
 
