@@ -89,7 +89,7 @@ def generator_weight(s, a, sp, o):
     if len(next_traj) == 0:
         return 1/3
     else:
-        res = value(sp.problem, next_traj)
+        res = value(sp.problem)
         return res.tolist()[["sure", "likely", "impossible"].index(o)]
 
 counter = 0
@@ -133,15 +133,15 @@ def generator(s,a,rng):
         # get a possible next trajectory
         next_traj = parse_traj(get_traj(next_state))
         # make an observation on our current state
-        res = torch.argmax(value(next_state.problem, next_traj)).item()
+        res = torch.argmax(value(next_state.problem)).item()
         if res == 0:
             obs = seralize_obs(next_state.subproblem, "sure")
-            rew += 2.0
+            rew += 3.0
         elif res == 1:
             obs = seralize_obs(next_state.subproblem, "likely")
         elif res == 2:
             obs = seralize_obs(next_state.subproblem, "impossible")
-            rew -= 2.0
+            rew -= 4.0
     # if we have no trajectory, we have a random observation
     elif next_state:
         next_traj = []
@@ -221,7 +221,7 @@ m = QuickPOMDP(
 # ImplicitDistribution(random_state)
 # solver = SARSOPSolver()
 filter = BootstrapFilter(m, 10)
-solver = POMCPSolver(max_depth = 5, tree_queries = 15,
+solver = POMCPSolver(max_depth = 10, tree_queries = 20,
                      estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
 # solver = POMCPOWSolver()
 planner = solve(solver, m)

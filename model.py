@@ -67,14 +67,18 @@ def think(task, n):
 # generate a value 
 @list_to_tuple
 @cache
-def value(task, steps):
+def value(task):
     # fill in value prompt template
-    cachestring = task+steps
+    cachestring = task
 
     if not VALUE_CACHE.get(cachestring):
+        # get values for task
+        parts = []
+        for i in range(6):
+            parts.append(think(task, i).split("(")[0].strip())
         # try to get cache, otherwise, eval
         # print("EVALUATING", task, "|", steps[-1])
-        prompt = V(task, [steps])
+        prompt = V(task, parts)
 
         # sample output distribution
         # inputs = tokenizer(prompt.strip(), return_tensors="pt")
@@ -157,5 +161,5 @@ def reward(task, solution):
     #     dist_sure, dist_impossible
     #     ]), dim=0)
 
-    return torch.tensor(30.0) if dist_sure  > dist_impossible  else torch.tensor(-30.0)
+    return torch.tensor(150.0) if dist_sure  > dist_impossible  else torch.tensor(-30.0)
 
