@@ -13,7 +13,7 @@ import random
 
 
 THOUGHT = re.compile(r"([\d +\-*=/]+) \(left:((?: -?\d+)+)\)")
-OP = re.compile(r"(\d+) ?([+\-*/]) ?(\d+)")
+OP = re.compile(r"(-?\d+) ?([+\-*/]) ?(-?\d+)")
 
 @dataclass
 class State:
@@ -68,7 +68,7 @@ with open(os.path.join(os.path.abspath(os.path.join(__file__, os.pardir)),
 def get_problem():
     # sample = DATA[random.randint(0, len(DATA)-1)]
     # return sample[1]
-    return "1 1 4 6"
+    return "8 8 11 13"
 
 def new_problem():
     p = get_problem()
@@ -123,7 +123,10 @@ def graphify_traj(traj):
     available_nodes = {}
 
     for op, res, _ in traj:
-        l,o,r = OP.findall(op)[0]
+        try:
+            l,o,r = OP.findall(op)[0]
+        except:
+            breakpoint()
 
         n = Node(lhs=int(l),op=o,rhs=int(r))
         if available_nodes.get(n.lhs):

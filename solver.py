@@ -114,6 +114,7 @@ def generator(s,a,rng):
         # if we try to roll back 
         if len(s.subproblem) == 4:
             next_state = s
+            rew -= 5.0
         else:
             next_state = rollback(s)
     # otherwise, sample a single thought
@@ -135,10 +136,12 @@ def generator(s,a,rng):
         res = torch.argmax(value(next_state.problem, next_traj)).item()
         if res == 0:
             obs = seralize_obs(next_state.subproblem, "sure")
+            rew += 2.0
         elif res == 1:
             obs = seralize_obs(next_state.subproblem, "likely")
         elif res == 2:
             obs = seralize_obs(next_state.subproblem, "impossible")
+            rew -= 2.0
     # if we have no trajectory, we have a random observation
     elif next_state:
         next_traj = []
@@ -218,7 +221,7 @@ m = QuickPOMDP(
 # ImplicitDistribution(random_state)
 # solver = SARSOPSolver()
 filter = BootstrapFilter(m, 10)
-solver = POMCPSolver(max_depth = 15, tree_queries = 500,
+solver = POMCPSolver(max_depth = 5, tree_queries = 15,
                      estimate_value=roll_jl_bridge) #, estimate_value=estimate_value)
 # solver = POMCPOWSolver()
 planner = solve(solver, m)
@@ -250,54 +253,56 @@ planner = solve(solver, m)
     #         next_state = increment(s)
 
 
-# r = new_problem()(0)
-# while len(r.subproblem) > 1:
-#     a, info = action_info(planner, Deterministic(r), tree_in_info=True)
-#     if a == "rollback":
-#         if len(r.subproblem) == 4:
-#             r = r
-#         else:
-#             r = rollback(r)
-#     elif "continue" in a:
-#         n = int(a.replace("continue", ""))
-#         if len(r.subproblem) == 1:
-#             breakpoint()
-#         else:
-#             r = increment(r, n)
-#     s2 = " | ".join(step_traj(get_traj(r))) if r != None else ""
-#     print(f"DID: {a}")
-#     if s2 != "":
-#         # breakpoint()
-#         print(f"GOT: {s2}")
+r = new_problem()(0)
+while len(r.subproblem) > 1:
+    a, info = action_info(planner, Deterministic(r), tree_in_info=True)
+    if a == "rollback":
+        if len(r.subproblem) == 4:
+            r = r
+        else:
+            r = rollback(r)
+    elif "continue" in a:
+        n = int(a.replace("continue", ""))
+        if len(r.subproblem) == 1:
+            breakpoint()
+        else:
+            r = increment(r, n)
+    s2 = " | ".join(step_traj(get_traj(r))) if r != None else ""
+    print(f"DID: {a}")
+    if s2 != "":
+        # breakpoint()
+        print(f"GOT: {s2}")
 
-#     counter = 0
-#     inbrowser(D3Tree(info["tree"]), "firefox")
-#     breakpoint()
+    counter = 0
+    inbrowser(D3Tree(info["tree"]), "firefox")
+    breakpoint()
 
+
+breakpoint()
 # breakpoint()
 
     # inbrowser(D3Tree(info[:tree], init_expand=3))
 
-while True:
-    for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):
-        # s1 = parse_traj(s.trajectory) if s != None else ""
-        s2 = " | ".join(step_traj(get_traj(sp))) if sp != None else ""
-        print(f"DID: {a}")
-        if s2 != "":
-            # breakpoint()
-            print(f"GOT: {s2} <{o}>")
-            # print(sp.trajectory)
-        # print(s,a,o)
-    print(parse_traj(get_traj(s)), "|", r)
-    breakpoint()
-
-# r = stepthrough(m, policy, "s,a,r,sp,o")
-# for i in r:
+# while True:
+#     for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):
+#         # s1 = parse_traj(s.trajectory) if s != None else ""
+#         s2 = " | ".join(step_traj(get_traj(sp))) if sp != None else ""
+#         print(f"DID: {a}")
+#         if s2 != "":
+#             # breakpoint()
+#             print(f"GOT: {s2} <{o}>")
+#             # print(sp.trajectory)
+#         # print(s,a,o)
+#     print(parse_traj(get_traj(s)), "|", r)
 #     breakpoint()
 
-# policy
-# solver = QMDPSolver()
-# policy = solve(solver, m)
+# # r = stepthrough(m, policy, "s,a,r,sp,o")
+# # for i in r:
+# #     breakpoint()
+
+# # policy
+# # solver = QMDPSolver()
+# # policy = solve(solver, m)
 
 
-# # J.rand(ImplicitDistribution(random_state))
+# # # J.rand(ImplicitDistribution(random_state))

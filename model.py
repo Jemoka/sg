@@ -98,12 +98,15 @@ def value(task, steps):
         elif i == "likely":
             dist_likely = math.exp(j)
 
+
     # grab the distributions for each class and rescale
     try:
         probs = F.softmax(torch.tensor([dist_sure, dist_likely, dist_impossible]),
                           dim=0)
     except RuntimeError:
         breakpoint()
+
+    # print(probs)
 
     return probs
 
@@ -112,10 +115,10 @@ def value(task, steps):
 @cache
 def reward(task, solution):
     ## TODO TODO HACK EXOGENOUS REWARD SANITY CHECK REMOVE ME ##
-    if int(solution.split("=")[-1].strip()) == 24:
-        return torch.tensor(30.0)
-    else:
-        return torch.tensor(-30.0)
+    # if int(solution.split("=")[-1].strip()) == 24:
+    #     return torch.tensor(30.0)
+    # else:
+    #     return torch.tensor(-30.0)
     ## ### ####
 
     cachestring = task+solution
@@ -142,7 +145,6 @@ def reward(task, solution):
     dist_sure = 0.001
     dist_impossible = 0.001
 
-
     for i,j in output.items():
         if i == "sure":
             dist_sure = math.exp(j)
@@ -150,10 +152,10 @@ def reward(task, solution):
         elif i == "im":
             dist_impossible = math.exp(j)
 
-    # grab the distributions for each class and rescale
-    probs = F.softmax(torch.tensor([
-        dist_sure, dist_impossible
-        ]), dim=0)
+    # # grab the distributions for each class and rescale
+    # probs = F.softmax(torch.tensor([
+    #     dist_sure, dist_impossible
+    #     ]), dim=0)
 
-    return probs[0]-probs[1]
+    return torch.tensor(30.0) if dist_sure  > dist_impossible  else torch.tensor(-30.0)
 
