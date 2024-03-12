@@ -117,6 +117,7 @@ def generator(s,a,rng):
             rew -= 5.0
         else:
             next_state = rollback(s)
+            rew -= 3.0
     # otherwise, sample a single thought
     elif a == "continue":
         # if we are out of states, evaluate
@@ -135,13 +136,14 @@ def generator(s,a,rng):
             rew -= 5.0
         else:
             next_state = rethink(s)
+            rew -= 4.0
 
     # calculate next trajectory
     if next_state and len(next_state.subproblem) != 4:
         # get a possible next trajectory
         next_traj = parse_traj(get_traj(next_state))
         # make an observation on our current state
-        res = torch.argmax(value(next_state.problem)).item()
+        res = torch.argmax(value(" ".join([str(i) for i in next_state.subproblem]))).item()
         if res == 0:
             obs = seralize_obs(next_state.subproblem, "sure")
             rew += 3.0
@@ -264,7 +266,10 @@ while len(r.subproblem) > 1:
         if len(r.subproblem) == 4:
             r = r
         else:
-            r = rollback(r)
+            rp = rollback(r)
+            if rp == None:
+                breakpoint()
+            r = rp
     elif a == "continue":
         if len(r.subproblem) == 1:
             breakpoint()
@@ -281,25 +286,25 @@ while len(r.subproblem) > 1:
 
     counter = 0
     inbrowser(D3Tree(info["tree"]), "firefox")
-    breakpoint()
+    # breakpoint()
 
 breakpoint()
 # breakpoint()
 
     # inbrowser(D3Tree(info[:tree], init_expand=3))
 
-# while True:
-#     for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):
-#         # s1 = parse_traj(s.trajectory) if s != None else ""
-#         s2 = " | ".join(step_traj(get_traj(sp))) if sp != None else ""
-#         print(f"DID: {a}")
-#         if s2 != "":
-#             # breakpoint()
-#             print(f"GOT: {s2} <{o}>")
-#             # print(sp.trajectory)
-#         # print(s,a,o)
-#     print(parse_traj(get_traj(s)), "|", r)
-#     breakpoint()
+while True:
+    for (s,sp, a,o,r) in stepthrough(m, planner, filter, "s,sp,a,o,r"):
+        # s1 = parse_traj(s.trajectory) if s != None else ""
+        s2 = " | ".join(step_traj(get_traj(sp))) if sp != None else ""
+        print(f"DID: {a}")
+        if s2 != "":
+            # breakpoint()
+            print(f"GOT: {s2} <{o}>")
+            # print(sp.trajectory)
+        # print(s,a,o)
+    print(parse_traj(get_traj(s)), "|", r)
+    breakpoint()
 
 # # r = stepthrough(m, policy, "s,a,r,sp,o")
 # # for i in r:

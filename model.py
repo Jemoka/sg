@@ -31,7 +31,7 @@ def list_to_tuple(function):
         return result
     return wrapper
 
-NUM_THOUGHTS = 3
+NUM_THOUGHTS = 5
 
 # generate thoughts
 def think(task, prev):
@@ -41,8 +41,6 @@ def think(task, prev):
     # if we have an unused thought, give it to them
     if len(existing) > 0:
         return existing[0]
-
-    print("THINKING", task)
 
     # we need to think get some more
     output = []
@@ -74,8 +72,9 @@ def value(task):
     if not VALUE_CACHE.get(cachestring):
         # get values for task
         thoughts = []
-        for i in range(10):
-            thoughts.append(think(task, thoughts))
+        if not task.isnumeric():
+            for i in range(NUM_THOUGHTS):
+                thoughts.append(think(task, thoughts))
 
         parts = []
         for t in thoughts:
@@ -91,6 +90,7 @@ def value(task):
 
     output = VALUE_CACHE[cachestring]
         
+    print(task, output)
 
     # calculate probablitiies
     dist_sure = 0.001
@@ -98,12 +98,12 @@ def value(task):
     dist_impossible = 0.001
 
     for i,j in output.items():
-        if i == "sure":
+        if i == "sure" or i == "'sure":
             dist_sure = math.exp(j)
         # im is apparently a token
-        elif i == "im":
+        elif i == "im" or i == "'im":
             dist_impossible = math.exp(j)
-        elif i == "likely":
+        elif i == "likely" or i == "'likely":
             dist_likely = math.exp(j)
 
 
@@ -113,8 +113,6 @@ def value(task):
                           dim=0)
     except RuntimeError:
         breakpoint()
-
-    # print(probs)
 
     return probs
 

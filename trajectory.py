@@ -36,31 +36,38 @@ def serialize_state(s):
     return s.problem+"|"+(" ".join(str(i) for i in s.subproblem))
 
 def increment(s):
-        
-    ns = State(
-        problem=s.problem,
-        subproblem = s.subproblem,
-        operation = None,
-        prev = s,
-        attempts = []
-    )
-
-    return rethink(ns)
-
-def rethink(s):
-    thought = think(" ".join(str(i) for i in s.subproblem),s.attempts)
-    nxt = parse_thought(thought)
-
-    if not nxt:
-        breakpoint()
+    nxt = parse_thought(s.attempts[-1])
         
     ns = State(
         problem=s.problem,
         subproblem = nxt[2],
         operation = nxt,
+        prev = s,
+        attempts = []
+    )
+    if len(nxt[2]) == 1:
+        return ns
+
+    ret = rethink(ns)
+    return ret
+
+
+def rethink(s):
+    thought = think(" ".join(str(i) for i in s.subproblem),s.attempts)
+
+        
+    ns = State(
+        problem=s.problem,
+        subproblem = s.subproblem,
+        operation = s.operation,
         attempts = s.attempts + [thought],
         prev = s.prev
     )
+    # print(ns.prev)
+
+    # if ns.prev == None:
+        # print("BOP")
+        # breakpoint()
 
     return ns
 
@@ -84,18 +91,18 @@ with open(os.path.join(os.path.abspath(os.path.join(__file__, os.pardir)),
 def get_problem():
     # sample = DATA[random.randint(0, len(DATA)-1)]
     # return sample[1]
-    return "1 1 4 6"
+    return "1 6 6 12"
 
 def new_problem():
     p = get_problem()
     def g(_):
-        return State(
+        return rethink(State(
             problem=p,
             subproblem=[int(i) for i in p.split(" ")],
             operation=None,
             prev=None,
             attempts=[]
-        )
+        ))
 
     return g
 

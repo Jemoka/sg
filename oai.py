@@ -42,30 +42,30 @@ def prompt_for_completion(text):
 def prompt_for_next(text):
     # print("NTP")
 
-    params = {
-        "model": "gpt-35-turbo",
-        "prompt": text,
-        "max_tokens": 1,
-        "temperature": 0,
-        "logprobs": 5,
-        "n": 1,
-    }
-
-    completion = client.completions.create(**params)
-    return completion.choices[0].logprobs.top_logprobs[0]
-
     # params = {
-    #     "model": "gpt-4",
-    #     "messages": msgify(text),
+    #     "model": "gpt-35-turbo",
+    #     "prompt": text,
     #     "max_tokens": 1,
     #     "temperature": 0,
+    #     "logprobs": 5,
     #     "n": 1,
     # }
 
-    # completion = client.chat.completions.create(**params)
-    # return {
-    #     completion.choices[0].message.content.strip(): -1.0
-    # }
+    # completion = client.completions.create(**params)
+    # return completion.choices[0].logprobs.top_logprobs[0]
+
+    params = {
+        "model": "gpt-4",
+        "messages": msgify(text),
+        "max_tokens": 1,
+        "temperature": 0,
+        "n": 1,
+    }
+
+    completion = client.chat.completions.create(**params)
+    return {
+        completion.choices[0].message.content.strip(): -1.0
+    }
 
 # tmp = prompt_for_next("test")
 # tmp

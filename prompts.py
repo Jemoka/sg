@@ -43,11 +43,15 @@ Possible next steps:{steps}
 def value(task, steps):
     steps = "\n".join(steps)
     return f"""
-You are judge. Evaluate if the given numbers can be combined to reach 24 (sure/likely/impossible). Reply with ONLY the word sure, likely, or impossible.
+Evaluate if the given numbers can be combined to reach 24 (sure/likely/impossible) using each number exactly once. Reply with ONLY the word sure, likely, or impossible.
 
 problem: 10 14
 10 + 14 = 24
-judge: sure
+judge: 'sure'
+problem: 5 7 8
+8 - 5 = 3
+3 * 7 = 21
+judge: 'likely'
 problem: 11 12
 11 + 12 = 23
 12 - 11 = 1
@@ -62,10 +66,6 @@ problem: 4 9 11
 9 + 11 = 20
 20 + 4 = 24
 judge: 'sure'
-problem: 5 7 8
-8 - 5 = 3
-3 * 7 = 21
-judge: 'likely'
 problem: 5 6 6
 6 - 5 = 1
 1 * 6 = 6
@@ -82,6 +82,10 @@ problem: 1 5 5
 1 * 5 = 5
 5 * 5 = 24
 judge: 'impossible'
+problem: 23
+judge: 'impossible'
+problem: 24
+judge: 'sure'
 problem: {task}
 {steps}
 judge: '""".strip()
