@@ -19,7 +19,7 @@ def prompt_for_completion(text):
     params = {
         "model": "gpt-35-turbo",
         "prompt": text,
-        "max_tokens": 300,
+        "max_tokens": 500,
         "temperature": 0.7,
         "n": 1,
     }
@@ -30,7 +30,7 @@ def prompt_for_completion(text):
     # params = {
     #     "model": "gpt-4",
     #     "messages": msgify(text),
-    #     "max_tokens": 300,
+    #     "max_tokens": 500,
     #     "temperature": 0.7,
     #     "n": 1,
     # }

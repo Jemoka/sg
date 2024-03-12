@@ -118,15 +118,23 @@ def generator(s,a,rng):
         else:
             next_state = rollback(s)
     # otherwise, sample a single thought
-    elif "continue" in a:
-        n = int(a.replace("continue", ""))
+    elif a == "continue":
         # if we are out of states, evaluate
         if len(s.subproblem) == 1:
             next_state = None
             traj = parse_traj(get_traj(s))
             rew = reward(s.problem, traj).item()
         else:
-            next_state = increment(s, n)
+            next_state = increment(s)
+    # otherwise, get another attempt
+    elif a == "think":
+        # if we are out of states, evaluate
+        if len(s.subproblem) == 1:
+            # this doesn't make any sense
+            next_state = s
+            rew -= 5.0
+        else:
+            next_state = rethink(s)
 
     # calculate next trajectory
     if next_state and len(next_state.subproblem) != 4:
@@ -172,12 +180,8 @@ rollout""")
 
 
 m = QuickPOMDP(
-    actions = ["continue0",
-               "continue1",
-               "continue2",
-               "continue3",
-               "continue4",
-               "continue5",
+    actions = ["think",
+               "continue",
                "rollback"],
     # observations = ["sure", "likely", "impossible"],
     obstype = J.String,
@@ -261,12 +265,14 @@ while len(r.subproblem) > 1:
             r = r
         else:
             r = rollback(r)
-    elif "continue" in a:
-        n = int(a.replace("continue", ""))
+    elif a == "continue":
         if len(r.subproblem) == 1:
             breakpoint()
         else:
-            r = increment(r, n)
+            r = increment(r)
+    elif a == "think":
+        if len(r.subproblem) != 1:
+            r = rethink(r)
     s2 = " | ".join(step_traj(get_traj(r))) if r != None else ""
     print(f"DID: {a}")
     if s2 != "":
@@ -276,7 +282,6 @@ while len(r.subproblem) > 1:
     counter = 0
     inbrowser(D3Tree(info["tree"]), "firefox")
     breakpoint()
-
 
 breakpoint()
 # breakpoint()

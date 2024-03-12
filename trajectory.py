@@ -21,6 +21,8 @@ class State:
     # trajectory: List[Tuple[str, int, List[int]]]
     subproblem: List[int]
     operation: Optional[Tuple[str, int, List[int]]]
+    # previous thoughts
+    attempts: List[str]
     prev: Optional["State"]
 
 def seralize_obs(subproblem, reasoning):
@@ -33,17 +35,31 @@ def get_reasoning(obs):
 def serialize_state(s):
     return s.problem+"|"+(" ".join(str(i) for i in s.subproblem))
 
-def increment(p,n):
-    nxt = parse_thought(think(" ".join(str(i) for i in p.subproblem),n))
+def increment(s):
+        
+    ns = State(
+        problem=s.problem,
+        subproblem = s.subproblem,
+        operation = None,
+        prev = s,
+        attempts = []
+    )
+
+    return rethink(ns)
+
+def rethink(s):
+    thought = think(" ".join(str(i) for i in s.subproblem),s.attempts)
+    nxt = parse_thought(thought)
 
     if not nxt:
         breakpoint()
         
     ns = State(
-        problem=p.problem,
+        problem=s.problem,
         subproblem = nxt[2],
         operation = nxt,
-        prev = p
+        attempts = s.attempts + [thought],
+        prev = s.prev
     )
 
     return ns
@@ -52,11 +68,11 @@ def rollback(p):
     return p.prev
 
 def get_traj(r):
-    trajectory = [r.operation]
+    trajectory = []
 
-    while r.operation != None:
-        r = r.prev
+    while r:
         trajectory.append(r.operation)
+        r = r.prev
 
     return list(reversed(trajectory))[1:]
 
@@ -68,7 +84,7 @@ with open(os.path.join(os.path.abspath(os.path.join(__file__, os.pardir)),
 def get_problem():
     # sample = DATA[random.randint(0, len(DATA)-1)]
     # return sample[1]
-    return "8 8 11 13"
+    return "1 1 4 6"
 
 def new_problem():
     p = get_problem()
@@ -77,7 +93,8 @@ def new_problem():
             problem=p,
             subproblem=[int(i) for i in p.split(" ")],
             operation=None,
-            prev=None
+            prev=None,
+            attempts=[]
         )
 
     return g
@@ -107,7 +124,7 @@ def rollout_state(state):
     r = state
 
     while len(r.subproblem) != 1:
-        r = increment(r, random.randint(0,5))
+        r = increment(r)
 
     return reward(state.problem, parse_traj(get_traj(r))).item()
 

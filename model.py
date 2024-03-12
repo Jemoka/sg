@@ -31,24 +31,28 @@ def list_to_tuple(function):
         return result
     return wrapper
 
+NUM_THOUGHTS = 3
+
 # generate thoughts
-def think(task, n):
+def think(task, prev):
     taskhash = tuple(sorted([int(i) for i in task.split(" ")]))
+    existing = [i for i in THOUGHT_CACHE[taskhash] if i not in prev]
 
-    if len(THOUGHT_CACHE[taskhash]) > 0:
-        return THOUGHT_CACHE[taskhash][n]
+    # if we have an unused thought, give it to them
+    if len(existing) > 0:
+        return existing[0]
 
-    # print("THINKING", task)
+    print("THINKING", task)
 
-    # we need to get some more
+    # we need to think get some more
     output = []
 
     while len(output) == 0:
         # fill in value prompt template
-        prompt = P(task)
+        prompt = P(task, existing, len(existing)+NUM_THOUGHTS)
 
         output = [i.strip() for i in 
-                prompt_for_completion(prompt).split("\n")
+                  prompt_for_completion(prompt).split("\n")
                 if i.strip() != ""]
 
     # for each valid thought, append
@@ -56,12 +60,8 @@ def think(task, n):
         if THOUGHT.match(i):
             THOUGHT_CACHE[taskhash].append(i)
 
-    # if the length of the thought cache is not big
-    # enough, oversample
-    while len(THOUGHT_CACHE[taskhash]) < 6 and len(THOUGHT_CACHE[taskhash]) != 0:
-        THOUGHT_CACHE[taskhash].append(random.choice(THOUGHT_CACHE[taskhash]))
-
-    return think(task, n)
+    # recursively return
+    return think(task, prev)
 
 
 # generate a value 
@@ -73,9 +73,13 @@ def value(task):
 
     if not VALUE_CACHE.get(cachestring):
         # get values for task
+        thoughts = []
+        for i in range(10):
+            thoughts.append(think(task, thoughts))
+
         parts = []
-        for i in range(6):
-            parts.append(think(task, i).split("(")[0].strip())
+        for t in thoughts:
+            parts.append(t.split("(")[0].strip())
         # try to get cache, otherwise, eval
         # print("EVALUATING", task, "|", steps[-1])
         prompt = V(task, parts)
@@ -130,7 +134,8 @@ def reward(task, solution):
     if not REWARD_CACHE.get(cachestring):
         # try to get cache, otherwise, eval
         # print("REWARDING", task, "|", scolution)
-        prompt = R(task, solution)
+        spl = solution.split("=")
+        prompt = R(task, f"{spl[0].strip()} = {spl[-1].strip()}")
         output = prompt_for_next(prompt)
 
         # sample output distribution
